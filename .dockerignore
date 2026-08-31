@@ -1,9 +1,0 @@
-**/node_modules
-**/.next
-**/.turbo
-**/dist
-**/coverage
-.git
-.github
-*.md
-!README.md

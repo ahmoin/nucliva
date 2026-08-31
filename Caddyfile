@@ -1,4 +1,0 @@
-example.com {
-    encode gzip
-    reverse_proxy web:3000
-}
