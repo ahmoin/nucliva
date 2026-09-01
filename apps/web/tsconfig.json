@@ -3,6 +3,8 @@
   "compilerOptions": {
     "paths": {
       "@/*": ["./*"],
+      "@workspace/db": ["../../packages/db/src/client.ts"],
+      "@workspace/db/schema": ["../../packages/db/src/schema/index.ts"],
       "@workspace/ui/*": ["../../packages/ui/src/*"]
     },
     "plugins": [

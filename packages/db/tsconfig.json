@@ -1,0 +1,16 @@
+{
+  "extends": "@workspace/typescript-config/base.json",
+  "compilerOptions": {
+    "declaration": false,
+    "declarationMap": false,
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "noEmit": true,
+    "paths": {
+      "@workspace/db": ["./src/client.ts"],
+      "@workspace/db/schema": ["./src/schema/index.ts"]
+    }
+  },
+  "include": ["src", "drizzle.config.ts"],
+  "exclude": ["node_modules", "drizzle"]
+}

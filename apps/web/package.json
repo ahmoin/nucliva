@@ -4,6 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "auth:generate": "pnpm dlx @better-auth/cli@latest generate --config lib/auth.ts --output ../../packages/db/src/schema/auth.ts -y",
     "build": "next build",
     "dev": "next dev",
     "start": "next start",
@@ -11,7 +12,9 @@
   },
   "dependencies": {
     "@phosphor-icons/react": "^2.1.10",
+    "@workspace/db": "workspace:*",
     "@workspace/ui": "workspace:*",
+    "better-auth": "1.7.2",
     "next": "16.2.6",
     "next-themes": "^0.4.6",
     "react": "19.2.4",

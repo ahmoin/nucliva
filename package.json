@@ -3,7 +3,12 @@
   "version": "0.0.1",
   "private": true,
   "scripts": {
+    "auth:generate": "pnpm --filter web run auth:generate",
     "build": "turbo build",
+    "db:generate": "pnpm --filter @workspace/db db:generate",
+    "db:migrate": "pnpm --filter @workspace/db db:migrate",
+    "db:push": "pnpm --filter @workspace/db db:push",
+    "db:studio": "pnpm --filter @workspace/db db:studio",
     "dev": "turbo dev",
     "format": "ultracite fix",
     "lint": "ultracite check",
@@ -11,7 +16,6 @@
   },
   "devDependencies": {
     "@biomejs/biome": "^2.5.11",
-    "@workspace/eslint-config": "workspace:*",
     "@workspace/typescript-config": "workspace:*",
     "turbo": "^2.9.18",
     "typescript": "^5",

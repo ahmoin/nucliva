@@ -5,6 +5,9 @@
     "ultracite/biome/react",
     "ultracite/biome/next"
   ],
+  "files": {
+    "includes": ["!**/packages/db/drizzle"]
+  },
   "overrides": [
     {
       "includes": ["**/postcss.config.*"],
@@ -12,6 +15,31 @@
         "rules": {
           "performance": {
             "noBarrelFile": "off"
+          }
+        }
+      }
+    },
+    {
+      "includes": [
+        "packages/db/**",
+        "apps/web/lib/auth.ts",
+        "apps/web/app/api/auth/**"
+      ],
+      "linter": {
+        "rules": {
+          "performance": {
+            "noBarrelFile": "off",
+            "noNamespaceImport": "off"
+          },
+          "style": {
+            "noExportedImports": "off"
+          }
+        }
+      },
+      "assist": {
+        "actions": {
+          "source": {
+            "useSortedKeys": "off"
           }
         }
       }
