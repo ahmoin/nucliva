@@ -11,14 +11,20 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@langchain/core": "^1.2.12",
+    "@langchain/openai": "^1.5.13",
+    "@langchain/tavily": "^1.2.0",
+    "@langchain/textsplitters": "^1.0.1",
     "@phosphor-icons/react": "^2.1.10",
     "@workspace/db": "workspace:*",
     "@workspace/ui": "workspace:*",
     "better-auth": "1.7.2",
+    "drizzle-orm": "^0.45.2",
     "next": "16.2.6",
     "next-themes": "^0.4.6",
     "react": "19.2.4",
-    "react-dom": "19.2.4"
+    "react-dom": "19.2.4",
+    "zod": "^4.4.3"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",

@@ -17,14 +17,12 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { authClient } from "@/lib/auth-client";
 
-type Step = "email" | "password";
-
 export function SignupForm({
   className,
   ...props
 }: React.ComponentProps<"div">) {
   const router = useRouter();
-  const [step, setStep] = useState<Step>("email");
+  const [emailSubmitted, setEmailSubmitted] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -48,7 +46,7 @@ export function SignupForm({
     router.push("/dashboard");
   };
 
-  if (step === "password") {
+  if (emailSubmitted) {
     return (
       <div className={cn("flex flex-col gap-6", className)} {...props}>
         <form onSubmit={submitPassword}>
@@ -80,7 +78,7 @@ export function SignupForm({
                 />
                 <Button
                   className="absolute top-1/2 right-1 h-auto -translate-y-1/2 px-2 py-1"
-                  onClick={() => setStep("email")}
+                  onClick={() => setEmailSubmitted(false)}
                   size="sm"
                   type="button"
                   variant="link"
@@ -136,7 +134,7 @@ export function SignupForm({
       <form
         onSubmit={(event) => {
           event.preventDefault();
-          setStep("password");
+          setEmailSubmitted(true);
         }}
       >
         <FieldGroup>

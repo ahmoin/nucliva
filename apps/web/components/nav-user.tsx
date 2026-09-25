@@ -28,6 +28,8 @@ import {
   SidebarMenuItem,
   useSidebar,
 } from "@workspace/ui/components/sidebar";
+import { useRouter } from "next/navigation";
+import { authClient } from "@/lib/auth-client";
 
 export function NavUser({
   user,
@@ -39,6 +41,14 @@ export function NavUser({
   };
 }) {
   const { isMobile } = useSidebar();
+  const router = useRouter();
+  const initials = user.name
+    .split(" ")
+    .map((part) => part[0])
+    .join("")
+    .slice(0, 2)
+    .toUpperCase();
+
   return (
     <SidebarMenu>
       <SidebarMenuItem>
@@ -50,7 +60,7 @@ export function NavUser({
           >
             <Avatar>
               <AvatarImage alt={user.name} src={user.avatar} />
-              <AvatarFallback>CN</AvatarFallback>
+              <AvatarFallback>{initials}</AvatarFallback>
             </Avatar>
             <div className="grid flex-1 text-left text-sm leading-tight">
               <span className="truncate font-medium">{user.name}</span>
@@ -60,7 +70,7 @@ export function NavUser({
           </DropdownMenuTrigger>
           <DropdownMenuContent
             align="start"
-            className="min-w-56 rounded-lg"
+            className="min-w-56"
             side={isMobile ? "bottom" : "right"}
             sideOffset={4}
           >
@@ -69,7 +79,7 @@ export function NavUser({
                 <div className="flex items-center gap-2 px-1 py-1.5 text-left text-sm">
                   <Avatar>
                     <AvatarImage alt={user.name} src={user.avatar} />
-                    <AvatarFallback>CN</AvatarFallback>
+                    <AvatarFallback>{initials}</AvatarFallback>
                   </Avatar>
                   <div className="grid flex-1 text-left text-sm leading-tight">
                     <span className="truncate font-medium">{user.name}</span>
@@ -101,7 +111,12 @@ export function NavUser({
               </DropdownMenuItem>
             </DropdownMenuGroup>
             <DropdownMenuSeparator />
-            <DropdownMenuItem>
+            <DropdownMenuItem
+              onClick={async () => {
+                await authClient.signOut();
+                router.push("/login");
+              }}
+            >
               <SignOutIcon />
               Log out
             </DropdownMenuItem>
