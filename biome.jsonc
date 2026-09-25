@@ -43,6 +43,51 @@
           }
         }
       }
+    },
+    {
+      "includes": [
+        "packages/ui/src/components/**",
+        "packages/ui/src/hooks/**",
+        "apps/web/components/app-sidebar.tsx",
+        "apps/web/components/calendars.tsx",
+        "apps/web/components/date-picker.tsx",
+        "apps/web/components/nav-user.tsx",
+        "apps/web/components/signup-form.tsx",
+        "apps/web/components/login-form.tsx",
+        "apps/web/app/dashboard/**",
+        "apps/web/app/signup/**",
+        "apps/web/app/login/**"
+      ],
+      "linter": {
+        "rules": {
+          "a11y": {
+            "noLabelWithoutControl": "off",
+            "noSvgWithoutTitle": "off",
+            "useFocusableInteractive": "off",
+            "useSemanticElements": "off",
+            "useValidAnchor": "off"
+          },
+          "correctness": {
+            "noNestedComponentDefinitions": "off",
+            "useExhaustiveDependencies": "off"
+          },
+          "performance": {
+            "noJsxPropsBind": "off",
+            "noNamespaceImport": "off"
+          },
+          "style": {
+            "useConsistentTypeDefinitions": "off"
+          },
+          "suspicious": {
+            "noArrayIndexKey": "off",
+            "noDocumentCookie": "off",
+            "noDoubleEquals": "off",
+            "noLeakedRender": "off",
+            "noShadow": "off",
+            "noUnnecessaryConditions": "off"
+          }
+        }
+      }
     }
   ]
 }

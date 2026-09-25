@@ -5,9 +5,9 @@ export function proxy(request: NextRequest) {
   const sessionCookie = getSessionCookie(request);
 
   if (!sessionCookie) {
-    const signIn = new URL("/sign-in", request.url);
-    signIn.searchParams.set("redirect", request.nextUrl.pathname);
-    return NextResponse.redirect(signIn);
+    const login = new URL("/login", request.url);
+    login.searchParams.set("redirect", request.nextUrl.pathname);
+    return NextResponse.redirect(login);
   }
 
   return NextResponse.next();
