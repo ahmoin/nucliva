@@ -47,7 +47,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         <SidebarMenu>
           <SidebarMenuItem>
             <SidebarMenuButton render={<Link href="/dashboard" />} size="lg">
-              <Wordmark />
+              <Wordmark className="h-6! w-auto!" />
             </SidebarMenuButton>
           </SidebarMenuItem>
         </SidebarMenu>
@@ -56,10 +56,20 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         <SidebarGroup>
           <SidebarGroupContent>
             <SidebarMenu>
-              <SidebarMenuItem>
+              <SidebarMenuItem className="px-2 pt-2 pb-3">
                 <DropdownMenu>
-                  <DropdownMenuTrigger render={<SidebarMenuButton />}>
-                    <PlusIcon />
+                  <DropdownMenuTrigger
+                    render={
+                      <SidebarMenuButton
+                        className="group/new justify-center bg-primary font-semibold text-primary-foreground uppercase tracking-widest shadow-[0_0_24px_-6px_var(--primary)] transition-[box-shadow,background-color,transform] duration-150 ease-[cubic-bezier(0.23,1,0.32,1)] active:scale-[0.97] hover:bg-primary/90 hover:text-primary-foreground hover:shadow-[0_0_32px_-4px_var(--primary)] aria-expanded:bg-primary aria-expanded:text-primary-foreground"
+                        size="sm"
+                      />
+                    }
+                  >
+                    <PlusIcon
+                      className="transition-transform duration-200 ease-[cubic-bezier(0.23,1,0.32,1)] group-hover/new:rotate-90 group-aria-expanded/new:rotate-45"
+                      weight="bold"
+                    />
                     <span>New</span>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent
