@@ -6,7 +6,7 @@
     "ultracite/biome/next"
   ],
   "files": {
-    "includes": ["!**/packages/db/drizzle"]
+    "includes": ["!**/packages/db/drizzle", "!**/apps/web/public/logos"]
   },
   "overrides": [
     {
@@ -49,9 +49,10 @@
         "packages/ui/src/components/**",
         "packages/ui/src/hooks/**",
         "apps/web/components/app-sidebar.tsx",
-        "apps/web/components/calendars.tsx",
-        "apps/web/components/date-picker.tsx",
+        "apps/web/components/forgot-password-form.tsx",
         "apps/web/components/nav-user.tsx",
+        "apps/web/components/omnibar.tsx",
+        "apps/web/components/profile-form.tsx",
         "apps/web/components/signup-form.tsx",
         "apps/web/components/login-form.tsx",
         "apps/web/app/dashboard/**",
@@ -62,8 +63,10 @@
         "rules": {
           "a11y": {
             "noLabelWithoutControl": "off",
+            "noNoninteractiveElementInteractions": "off",
             "noSvgWithoutTitle": "off",
             "useFocusableInteractive": "off",
+            "useKeyWithClickEvents": "off",
             "useSemanticElements": "off",
             "useValidAnchor": "off"
           },

@@ -1,0 +1,13 @@
+<svg
+  fill="none"
+  height="32"
+  viewBox="0 0 32 32"
+  width="32"
+  xmlns="http://www.w3.org/2000/svg"
+>
+  <title>Nucliva</title>
+  <path d="M0 0H22L32 10V32H0V0Z" fill="#2EE59D" />
+  <path d="M8 8H12L24 24H20L8 8Z" fill="#07130D" />
+  <path d="M8 8H12V24H8V8Z" fill="#07130D" />
+  <path d="M20 8H24V24H20V8Z" fill="#07130D" />
+</svg>

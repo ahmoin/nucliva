@@ -50,7 +50,7 @@ export function NavUser({
     .toUpperCase();
 
   return (
-    <SidebarMenu>
+    <SidebarMenu className="motion-safe:fade-in-0 motion-safe:animate-in motion-safe:duration-200">
       <SidebarMenuItem>
         <DropdownMenu>
           <DropdownMenuTrigger
@@ -97,7 +97,9 @@ export function NavUser({
             </DropdownMenuGroup>
             <DropdownMenuSeparator />
             <DropdownMenuGroup>
-              <DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={() => router.push("/dashboard/profile")}
+              >
                 <CheckCircleIcon />
                 Account
               </DropdownMenuItem>

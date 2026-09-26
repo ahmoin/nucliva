@@ -1,6 +1,6 @@
 "use client";
 
-import { EyeIcon, EyeSlashIcon, RowsIcon } from "@phosphor-icons/react";
+import { EyeIcon, EyeSlashIcon } from "@phosphor-icons/react";
 import { Button } from "@workspace/ui/components/button";
 import {
   Field,
@@ -14,7 +14,8 @@ import { Input } from "@workspace/ui/components/input";
 import { cn } from "@workspace/ui/lib/utils";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useRef, useState } from "react";
+import { LogoMark } from "@/components/logo";
 import { authClient } from "@/lib/auth-client";
 
 export function SignupForm({
@@ -28,6 +29,7 @@ export function SignupForm({
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
+  const shakeRef = useRef<HTMLDivElement>(null);
 
   const submitPassword = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -41,6 +43,9 @@ export function SignupForm({
     setPending(false);
     if (signUpError) {
       setError(signUpError.message ?? "Could not create your account.");
+      shakeRef.current?.classList.remove("is-shaking");
+      shakeRef.current?.getBoundingClientRect();
+      shakeRef.current?.classList.add("is-shaking");
       return;
     }
     router.push("/dashboard");
@@ -48,7 +53,13 @@ export function SignupForm({
 
   if (emailSubmitted) {
     return (
-      <div className={cn("flex flex-col gap-6", className)} {...props}>
+      <div
+        className={cn(
+          "motion-safe:fade-in-0 motion-safe:slide-in-from-right-2 flex flex-col gap-6 motion-safe:animate-in motion-safe:duration-200 motion-safe:[animation-timing-function:cubic-bezier(0.23,1,0.32,1)]",
+          className
+        )}
+        {...props}
+      >
         <form onSubmit={submitPassword}>
           <FieldGroup>
             <div className="flex flex-col items-center gap-2 text-center">
@@ -56,9 +67,7 @@ export function SignupForm({
                 className="flex flex-col items-center gap-2 font-medium"
                 href="/"
               >
-                <div className="flex size-8 items-center justify-center rounded-md">
-                  <RowsIcon className="size-6" />
-                </div>
+                <LogoMark className="size-8" />
                 <span className="sr-only">Nucliva</span>
               </Link>
               <h1 className="font-bold text-xl">Create your password</h1>
@@ -89,7 +98,7 @@ export function SignupForm({
             </Field>
             <Field data-invalid={error ? true : undefined}>
               <FieldLabel htmlFor="password">Password</FieldLabel>
-              <div className="relative">
+              <div className="t-input relative" ref={shakeRef}>
                 <Input
                   aria-invalid={error ? true : undefined}
                   autoComplete="new-password"
@@ -110,7 +119,13 @@ export function SignupForm({
                   type="button"
                   variant="ghost"
                 >
-                  {showPassword ? <EyeSlashIcon /> : <EyeIcon />}
+                  <span
+                    className="t-icon-swap"
+                    data-state={showPassword ? "b" : "a"}
+                  >
+                    <EyeIcon className="t-icon" data-icon="a" />
+                    <EyeSlashIcon className="t-icon" data-icon="b" />
+                  </span>
                 </Button>
               </div>
               {error ? <FieldError>{error}</FieldError> : null}
@@ -143,9 +158,7 @@ export function SignupForm({
               className="flex flex-col items-center gap-2 font-medium"
               href="/"
             >
-              <div className="flex size-8 items-center justify-center rounded-md">
-                <RowsIcon className="size-6" />
-              </div>
+              <LogoMark className="size-8" />
               <span className="sr-only">Nucliva</span>
             </Link>
             <h1 className="font-bold text-xl">Create your Nucliva account</h1>

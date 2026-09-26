@@ -2,61 +2,133 @@
 
 import { PlusIcon } from "@phosphor-icons/react";
 import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@workspace/ui/components/dropdown-menu";
+import {
   Sidebar,
   SidebarContent,
   SidebarFooter,
+  SidebarGroup,
+  SidebarGroupContent,
+  SidebarGroupLabel,
   SidebarHeader,
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
-  SidebarMenuSkeleton,
   SidebarRail,
-  SidebarSeparator,
+  useSidebar,
 } from "@workspace/ui/components/sidebar";
+import { Skeleton } from "@workspace/ui/components/skeleton";
 import Link from "next/link";
+import { usePathname, useRouter } from "next/navigation";
 import type * as React from "react";
-import { Calendars } from "@/components/calendars";
-import { DatePicker } from "@/components/date-picker";
+import { Wordmark } from "@/components/logo";
 import { NavUser } from "@/components/nav-user";
 import { authClient } from "@/lib/auth-client";
-
-// This is sample data.
-const data = {
-  calendars: [
-    {
-      items: ["Personal", "Work", "Family"],
-      name: "My Calendars",
-    },
-    {
-      items: ["Holidays", "Birthdays"],
-      name: "Favorites",
-    },
-    {
-      items: ["Travel", "Reminders", "Deadlines"],
-      name: "Other",
-    },
-  ],
-};
+import {
+  collectionItems,
+  mainItems,
+  newItems,
+  workspaceItems,
+} from "@/lib/navigation";
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const { data: session, isPending } = authClient.useSession();
+  const { isMobile } = useSidebar();
+  const pathname = usePathname();
+  const router = useRouter();
 
   return (
     <Sidebar {...props}>
       <SidebarHeader className="h-16 border-sidebar-border border-b">
         <SidebarMenu>
           <SidebarMenuItem>
-            <SidebarMenuButton>
-              <PlusIcon />
-              <span>New Calendar</span>
+            <SidebarMenuButton render={<Link href="/dashboard" />} size="lg">
+              <Wordmark />
             </SidebarMenuButton>
           </SidebarMenuItem>
         </SidebarMenu>
       </SidebarHeader>
       <SidebarContent>
-        <DatePicker />
-        <SidebarSeparator className="mx-0" />
-        <Calendars calendars={data.calendars} />
+        <SidebarGroup>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              <SidebarMenuItem>
+                <DropdownMenu>
+                  <DropdownMenuTrigger render={<SidebarMenuButton />}>
+                    <PlusIcon />
+                    <span>New</span>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent
+                    align="start"
+                    className="min-w-48"
+                    side={isMobile ? "bottom" : "right"}
+                    sideOffset={4}
+                  >
+                    {newItems.map((item) => (
+                      <DropdownMenuItem
+                        key={item.href}
+                        onClick={() => router.push(item.href)}
+                      >
+                        <item.icon />
+                        {item.title}
+                      </DropdownMenuItem>
+                    ))}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </SidebarMenuItem>
+              {mainItems.map((item) => (
+                <SidebarMenuItem key={item.href}>
+                  <SidebarMenuButton
+                    isActive={pathname === item.href}
+                    render={<Link href={item.href} />}
+                  >
+                    <item.icon />
+                    <span>{item.title}</span>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              ))}
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+        <SidebarGroup>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              {collectionItems.map((item) => (
+                <SidebarMenuItem key={item.href}>
+                  <SidebarMenuButton
+                    isActive={pathname === item.href}
+                    render={<Link href={item.href} />}
+                  >
+                    <item.icon />
+                    <span>{item.title}</span>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              ))}
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+        <SidebarGroup>
+          <SidebarGroupLabel>Workspace</SidebarGroupLabel>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              {workspaceItems.map((item) => (
+                <SidebarMenuItem key={item.href}>
+                  <SidebarMenuButton
+                    isActive={pathname === item.href}
+                    render={<Link href={item.href} />}
+                  >
+                    <item.icon />
+                    <span>{item.title}</span>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              ))}
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
       </SidebarContent>
       <SidebarFooter>
         {session ? (
@@ -71,7 +143,10 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
           <SidebarMenu>
             <SidebarMenuItem>
               {isPending ? (
-                <SidebarMenuSkeleton showIcon />
+                <div className="flex h-12 items-center gap-2 px-2">
+                  <Skeleton className="size-8" />
+                  <Skeleton className="h-4 flex-1" />
+                </div>
               ) : (
                 <SidebarMenuButton render={<Link href="/login" />} size="lg">
                   Log in
