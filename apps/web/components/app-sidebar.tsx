@@ -41,6 +41,26 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const pathname = usePathname();
   const router = useRouter();
 
+  async function createDocument(kind: "doc" | "sheet" | "slides") {
+    const response = await fetch("/api/documents", {
+      body: JSON.stringify({ kind }),
+      headers: { "Content-Type": "application/json" },
+      method: "POST",
+    });
+
+    if (response.ok) {
+      const { id }: { id: string } = await response.json();
+
+      router.push(
+        {
+          doc: `/dashboard/docs/${id}`,
+          sheet: `/dashboard/sheets/${id}`,
+          slides: `/dashboard/presentations/${id}`,
+        }[kind]
+      );
+    }
+  }
+
   return (
     <Sidebar {...props}>
       <SidebarHeader className="h-16 border-sidebar-border border-b">
@@ -81,7 +101,17 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                     {newItems.map((item) => (
                       <DropdownMenuItem
                         key={item.href}
-                        onClick={() => router.push(item.href)}
+                        onClick={() => {
+                          if (item.title === "Doc") {
+                            createDocument("doc");
+                          } else if (item.title === "Presentation") {
+                            createDocument("slides");
+                          } else if (item.title === "Sheet") {
+                            createDocument("sheet");
+                          } else {
+                            router.push(item.href);
+                          }
+                        }}
                       >
                         <item.icon />
                         {item.title}

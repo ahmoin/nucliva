@@ -7,8 +7,6 @@ const leftLanes = [90, 200, 310];
 
 const lanePath = (y: number) => `M0 ${y} C 260 ${y}, 340 200, 600 200`;
 
-// The lights come in from the left, reach the chip and nothing comes out the
-// other side, because the page they were looking for does not exist.
 export function NotFoundScene() {
   const ref = useRef<HTMLDivElement>(null);
   const [hovered, setHovered] = useState(false);

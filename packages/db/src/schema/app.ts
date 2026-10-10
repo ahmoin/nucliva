@@ -27,6 +27,8 @@ export const documents = pgTable("documents", {
     .notNull()
     .default("doc"),
   content: jsonb("content").notNull().default(sql`'{}'::jsonb`),
+  starredAt: timestamp("starred_at"),
+  deletedAt: timestamp("deleted_at"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });

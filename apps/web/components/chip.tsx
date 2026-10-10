@@ -1,9 +1,6 @@
 import { cn } from "@workspace/ui/lib/utils";
 import { LogoMark } from "@/components/logo";
 
-// The Nucliva "chip". It starts dim and small and reacts to the nearest
-// ancestor with `group` and `data-active="true"`: it scales up, the logo goes
-// to full color and a light travels around its edge.
 export function Chip({ className }: { className?: string }) {
   return (
     <div

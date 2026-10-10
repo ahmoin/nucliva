@@ -6,8 +6,6 @@ import { useEffect, useRef } from "react";
 
 gsap.registerPlugin(ScrollTrigger);
 
-// Fades and lifts every `[data-reveal]` child (or the wrapper itself when
-// there are none) into place, staggered, once the block scrolls into view.
 export function Reveal({
   children,
   className,

@@ -6,7 +6,6 @@ import { useEffect, useRef } from "react";
 
 gsap.registerPlugin(ScrollTrigger);
 
-// Where each light comes from (below the mark) and where it settles.
 const lanes = {
   center: { d: "M38.5 80.77V-20", rest: 0.62 },
   left: {
@@ -19,9 +18,6 @@ const lanes = {
   },
 };
 
-// A small three-line mark that sits above a section title. Each section lights
-// a different line: when the mark scrolls into view a light rises up that line
-// and settles part way along it.
 export function SectionMark({
   lane = "left",
 }: {

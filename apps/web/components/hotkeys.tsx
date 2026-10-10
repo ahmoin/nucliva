@@ -16,8 +16,6 @@ export const isTyping = (target: EventTarget | null) => {
   );
 };
 
-// Single-key shortcuts. Pass a path ("/login") to navigate, or an in-page
-// anchor ("#features") to scroll. Ignored while typing or with a modifier held.
 export function Hotkeys({ keys }: { keys: Record<string, string> }) {
   const router = useRouter();
 
@@ -59,7 +57,6 @@ export function Hotkeys({ keys }: { keys: Record<string, string> }) {
   return null;
 }
 
-// The little keycap shown next to a shortcut. Hidden on touch devices.
 export function KeyHint({
   children,
   className,

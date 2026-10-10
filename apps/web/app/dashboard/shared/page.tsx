@@ -1,7 +1,7 @@
+import { ShareNetworkIcon } from "@phosphor-icons/react/ssr";
 import { AppShell } from "@/components/app-shell";
-import { FileTable } from "@/components/file-table";
+import { EmptyState } from "@/components/empty-state";
 import { PageHeader } from "@/components/page-header";
-import { sharedFiles } from "@/lib/sample-data";
 
 export default function Page() {
   return (
@@ -10,7 +10,11 @@ export default function Page() {
         description="Files other people have shared with you."
         title="Shared with me"
       />
-      <FileTable items={sharedFiles} variant="shared" />
+      <EmptyState
+        description="Files other people share with you will show up here."
+        icon={ShareNetworkIcon}
+        title="Nothing shared with you"
+      />
     </AppShell>
   );
 }

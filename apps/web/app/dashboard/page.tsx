@@ -18,30 +18,40 @@ import Link from "next/link";
 import { AppShell } from "@/components/app-shell";
 import { FileTable } from "@/components/file-table";
 import { PageHeader } from "@/components/page-header";
-import { files, toneMarkers } from "@/lib/sample-data";
+import { EmptyState } from "@/components/empty-state";
+import { QuickActionCard } from "@/components/quick-action-card";
+import {
+  countStyleSamples,
+  getUserId,
+  listDocuments,
+} from "@/lib/documents";
 
 const quickActions = [
   {
     description: "Write with AI in your own voice.",
-    href: "/dashboard/docs",
     icon: FileTextIcon,
+    kind: "doc" as const,
     title: "New doc",
   },
   {
     description: "Turn notes into slides.",
-    href: "/dashboard/presentations",
     icon: PresentationChartIcon,
+    kind: "slides" as const,
     title: "New presentation",
   },
   {
     description: "Organize data and research.",
-    href: "/dashboard/sheets",
     icon: TableIcon,
+    kind: "sheet" as const,
     title: "New sheet",
   },
 ];
 
-export default function Page() {
+export default async function Page() {
+  const userId = await getUserId();
+  const recent = await listDocuments(userId, { limit: 5 });
+  const sampleCount = await countStyleSamples(userId);
+
   return (
     <AppShell title="Home">
       <PageHeader
@@ -50,23 +60,13 @@ export default function Page() {
       />
       <div className="grid gap-4 md:grid-cols-3">
         {quickActions.map((action) => (
-          <Card key={action.href} size="sm">
-            <CardHeader>
-              <action.icon className="mb-2 size-6" />
-              <CardTitle>{action.title}</CardTitle>
-              <CardDescription>{action.description}</CardDescription>
-              <CardAction>
-                <Button
-                  nativeButton={false}
-                  render={<Link href={action.href} />}
-                  size="sm"
-                  variant="outline"
-                >
-                  Create
-                </Button>
-              </CardAction>
-            </CardHeader>
-          </Card>
+          <QuickActionCard
+            description={action.description}
+            icon={<action.icon className="mb-2 size-6" />}
+            key={action.title}
+            kind={action.kind}
+            title={action.title}
+          />
         ))}
       </div>
       <div className="grid gap-4 lg:grid-cols-3">
@@ -86,7 +86,15 @@ export default function Page() {
             </CardAction>
           </CardHeader>
           <CardContent>
-            <FileTable items={files.slice(0, 5)} />
+            {recent.length === 0 ? (
+              <EmptyState
+                description="Files you create show up here."
+                icon={FileTextIcon}
+                title="No files yet"
+              />
+            ) : (
+              <FileTable items={recent} />
+            )}
           </CardContent>
         </Card>
         <div className="flex flex-col gap-4">
@@ -126,20 +134,10 @@ export default function Page() {
                 </Button>
               </CardAction>
             </CardHeader>
-            <CardContent className="flex flex-col gap-3 text-sm">
-              {toneMarkers.map((marker) => (
-                <div
-                  className="flex min-w-0 items-center justify-between gap-4"
-                  key={marker.id}
-                >
-                  <span className="shrink-0 text-muted-foreground">
-                    {marker.title}
-                  </span>
-                  <span className="truncate font-medium" title={marker.value}>
-                    {marker.value}
-                  </span>
-                </div>
-              ))}
+            <CardContent className="text-muted-foreground text-sm">
+              {sampleCount === 0
+                ? "No writing samples yet. Add a few to teach Nucliva your voice."
+                : `${sampleCount.toLocaleString("en-US")} writing ${sampleCount === 1 ? "sample" : "samples"} added.`}
             </CardContent>
           </Card>
         </div>

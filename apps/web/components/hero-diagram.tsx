@@ -28,7 +28,6 @@ const outputs = [
   { label: "Sheet", y: 265 },
 ];
 
-// The bundle of parallel lanes next to the chip fans out toward the edge.
 const inputPath = (y: number, index: number) => {
   const lane = CENTER_Y + (index - 3) * LANE;
 
@@ -41,10 +40,6 @@ const outputPath = (y: number, index: number) => {
   return `M${CHIP_RIGHT} ${lane} L 840 ${lane} C 980 ${lane}, 1030 ${y}, 1200 ${y}`;
 };
 
-// A node is one line with a soft light travelling along it. GSAP tweens a
-// plain number (`state.p`, 0 to 1) and `render` derives everything from it:
-// the dot, its halo, the lit part of the line (a radial gradient centred on
-// the dot) and the label. No per-frame React state.
 function createNode(group: SVGGElement) {
   const base = group.querySelector<SVGPathElement>("[data-base]");
   const grad = group.querySelector<SVGRadialGradientElement>("[data-grad]");
@@ -94,8 +89,6 @@ const travel = (node: Node, p: number, duration: number, ease: string) => ({
   p,
 });
 
-// Fast start that decelerates (expo.out) toward ~55% of the line, a beat with
-// the label showing, then an accelerating pull (power3.in) into the chip.
 function inbound(node: Node) {
   return gsap
     .timeline()
@@ -108,7 +101,6 @@ function inbound(node: Node) {
     .to(node.glow, { duration: 0.3, opacity: 0 }, 1.9);
 }
 
-// Leaves the chip fast, coasts with its label, then accelerates off the edge.
 function outbound(node: Node, index: number) {
   return gsap
     .timeline()

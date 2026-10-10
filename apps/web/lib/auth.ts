@@ -5,6 +5,13 @@ import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { nextCookies } from "better-auth/next-js";
 
 export const auth = betterAuth({
+  account: {
+    accountLinking: {
+      enabled: true,
+      requireLocalEmailVerified: false,
+      trustedProviders: ["google", "github"],
+    },
+  },
   database: drizzleAdapter(db, { provider: "pg", schema }),
   emailAndPassword: {
     enabled: true,

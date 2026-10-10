@@ -1,21 +1,19 @@
-import { PlusIcon } from "@phosphor-icons/react/ssr";
-import { Button } from "@workspace/ui/components/button";
+import { FileTextIcon } from "@phosphor-icons/react/ssr";
 import { Input } from "@workspace/ui/components/input";
 import { AppShell } from "@/components/app-shell";
+import { EmptyState } from "@/components/empty-state";
 import { FileTable } from "@/components/file-table";
+import { NewDocButton } from "@/components/new-doc-button";
 import { PageHeader } from "@/components/page-header";
-import { files } from "@/lib/sample-data";
+import { getUserId, listDocuments } from "@/lib/documents";
 
-export default function Page() {
+export default async function Page() {
+  const docs = await listDocuments(await getUserId(), { kind: "doc" });
+
   return (
     <AppShell title="Docs">
       <PageHeader
-        actions={
-          <Button>
-            <PlusIcon />
-            New doc
-          </Button>
-        }
+        actions={<NewDocButton />}
         description="Write and edit documents with AI in your own voice."
         title="Docs"
       />
@@ -25,7 +23,15 @@ export default function Page() {
         placeholder="Search docs..."
         type="search"
       />
-      <FileTable items={files.filter((file) => file.kind === "doc")} />
+      {docs.length === 0 ? (
+        <EmptyState
+          description="Create a doc to start writing in your own voice."
+          icon={FileTextIcon}
+          title="No docs yet"
+        />
+      ) : (
+        <FileTable items={docs} />
+      )}
     </AppShell>
   );
 }
