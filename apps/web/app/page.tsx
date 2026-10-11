@@ -8,16 +8,31 @@ import { Chip } from "@/components/chip";
 import { HeroDiagram } from "@/components/hero-diagram";
 import { HeroPreview } from "@/components/hero-preview";
 import { Hotkeys, KeyHint } from "@/components/hotkeys";
-import { Wordmark } from "@/components/logo";
 import { Reveal } from "@/components/reveal";
 import { SectionMark } from "@/components/section-mark";
 import { SiteFooter } from "@/components/site-footer";
+import { SiteHeader, siteHotkeys } from "@/components/site-header";
+import { SolutionPreview } from "@/components/solution-preview";
+import { SolutionsShowcase } from "@/components/solutions-showcase";
 import { auth } from "@/lib/auth";
+import {
+  categoryOf,
+  detailOf,
+  solutionPath,
+  solutions,
+} from "@/lib/solutions";
 
-const hotkeys = {
-  l: "/login",
-  s: "/signup",
-};
+// The solutions named on the first screen, and the three shown with the list of
+// who Nucliva is for.
+const heroSolutions = [
+  "investor-updates",
+  "pitch-decks",
+  "blog-posts",
+  "proposals",
+  "client-reports",
+  "study-guides",
+];
+const featured = ["investor-updates", "market-scans", "meeting-notes"];
 
 const enter =
   "motion-safe:fade-in motion-safe:slide-in-from-bottom-4 motion-safe:animate-in motion-safe:fill-mode-both motion-safe:duration-700 motion-safe:ease-out";
@@ -101,35 +116,8 @@ export default async function Page() {
 
   return (
     <div className="flex min-h-svh flex-col overflow-x-clip">
-      <Hotkeys keys={hotkeys} />
-      <header className="motion-safe:fade-in sticky top-0 z-20 border-b bg-background/80 backdrop-blur-md motion-safe:animate-in motion-safe:duration-500">
-        <div className="mx-auto flex h-16 w-full max-w-6xl items-center justify-between px-6">
-          <Wordmark className="h-7" />
-          <nav className="hidden items-center gap-8 text-muted-foreground text-sm md:flex">
-            <a className="hover:text-foreground" href="#features">
-              Features
-            </a>
-            <a className="hover:text-foreground" href="#built-with">
-              Built with
-            </a>
-          </nav>
-          <div className="flex items-center gap-2">
-            <Button
-              nativeButton={false}
-              render={<Link href="/login" />}
-              variant="ghost"
-            >
-              Log in
-              <KeyHint>L</KeyHint>
-            </Button>
-            <Button nativeButton={false} render={<Link href="/signup" />}>
-              Sign up
-              <KeyHint>S</KeyHint>
-              <ArrowRightIcon />
-            </Button>
-          </div>
-        </div>
-      </header>
+      <Hotkeys keys={siteHotkeys} />
+      <SiteHeader />
       <main className="flex flex-1 flex-col">
         <section className="mx-auto w-full max-w-6xl px-6 pt-24 pb-16 md:pt-36 md:pb-24">
           <div className="flex flex-col items-center gap-8 text-center">
@@ -172,6 +160,43 @@ export default async function Page() {
               <p className="text-muted-foreground text-sm">
                 Free to start. No credit card required.
               </p>
+            </div>
+            {/* What Nucliva is for, a click from the first screen. */}
+            <div
+              className={`flex max-w-3xl flex-col items-center gap-3 delay-300 ${enter}`}
+            >
+              <span className="text-muted-foreground text-xs uppercase tracking-widest">
+                Already knows how to write
+              </span>
+              <ul className="flex flex-wrap justify-center gap-2 text-sm">
+                {heroSolutions.map((slug) => {
+                  const solution = solutions.find((item) => item.slug === slug);
+                  const line = categoryOf(solution?.category ?? "");
+
+                  return solution ? (
+                    <li key={slug}>
+                      <Link
+                        className="flex items-center gap-2 border bg-muted/40 px-3 py-1.5 transition-colors hover:bg-muted"
+                        href={solutionPath(solution)}
+                      >
+                        <span
+                          className={`size-1.5 rounded-full ${line?.dot ?? ""}`}
+                        />
+                        {solution.title}
+                      </Link>
+                    </li>
+                  ) : null;
+                })}
+                <li>
+                  <Link
+                    className="flex items-center gap-1 px-3 py-1.5 text-primary hover:underline"
+                    href="/solutions"
+                  >
+                    All solutions
+                    <ArrowRightIcon />
+                  </Link>
+                </li>
+              </ul>
             </div>
           </div>
           <div
@@ -237,6 +262,51 @@ export default async function Page() {
           />
           <Reveal className="relative">
             <HeroPreview />
+          </Reveal>
+        </section>
+        <section
+          className="mx-auto w-full max-w-6xl scroll-mt-20 px-6 pt-16 pb-16 md:pt-24 md:pb-24"
+          id="solutions"
+        >
+          <Reveal className="flex flex-col gap-16">
+            <div data-reveal>
+              <SolutionsShowcase />
+            </div>
+            <ul
+              className="grid gap-px border bg-border sm:grid-cols-3"
+              data-reveal
+            >
+              {featured.map((slug) => {
+                const solution = solutions.find((item) => item.slug === slug);
+                const line = categoryOf(solution?.category ?? "");
+
+                return solution ? (
+                  <li key={slug}>
+                    <Link
+                      className="group flex h-full flex-col bg-background transition-colors hover:bg-muted/30"
+                      href={solutionPath(solution)}
+                    >
+                      <SolutionPreview
+                        kind={solution.kind}
+                        prompt={detailOf(slug)?.prompt}
+                      />
+                      <div className="flex flex-col gap-1 p-5">
+                        <span className="font-medium">{solution.title}</span>
+                        <span className="text-muted-foreground text-sm">
+                          {solution.summary}
+                        </span>
+                        <span className="mt-3 flex items-center gap-2 text-muted-foreground text-xs">
+                          <span
+                            className={`size-1.5 rounded-full ${line?.dot ?? ""}`}
+                          />
+                          {line?.name}
+                        </span>
+                      </div>
+                    </Link>
+                  </li>
+                ) : null;
+              })}
+            </ul>
           </Reveal>
         </section>
         {showcases.map((item, index) => (

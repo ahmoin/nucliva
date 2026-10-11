@@ -16,6 +16,12 @@ export function SiteFooter() {
           <span className="font-medium">Product</span>
           <Link
             className="text-muted-foreground hover:underline"
+            href="/solutions"
+          >
+            Solutions
+          </Link>
+          <Link
+            className="text-muted-foreground hover:underline"
             href="/#features"
           >
             Features
