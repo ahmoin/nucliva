@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { ghostwriterPrompt, toneAnalysisPrompt } from "@/lib/ai/prompts";
 import { findSimilarChunks } from "@/lib/embeddings";
 import { getChatModel } from "@/lib/nebius";
 
@@ -17,9 +18,7 @@ const toneMarkersSchema = z.object({
 export function extractToneMarkers(samples: string[]) {
   return getChatModel("super", { temperature: 0 })
     .withStructuredOutput(toneMarkersSchema)
-    .invoke(
-      `Analyze the tone of the author of these writing samples.\n\n${samples.join("\n---\n")}`
-    );
+    .invoke(toneAnalysisPrompt(samples));
 }
 
 export async function writeInUserVoice({
@@ -37,22 +36,8 @@ export async function writeInUserVoice({
   const toneMarkers =
     samples.length > 0 ? await extractToneMarkers(samples) : null;
 
-  const system = toneMarkers
-    ? `You are a ghostwriter. Write the requested draft in the author's own voice.
-
-Tone markers:
-- Formality: ${toneMarkers.formality}
-- Sentence structure: ${toneMarkers.sentenceStructure}
-- Vocabulary: ${toneMarkers.vocabulary}
-
-Excerpts of the author's real writing:
-${samples.join("\n---\n")}
-
-Match the voice, but never copy sentences from the excerpts and never mention this analysis. Reply with the draft only, no options or commentary.`
-    : "You are a ghostwriter. Write the requested draft clearly and naturally. Reply with the draft only, no options or commentary.";
-
   const response = await getChatModel("ultra", { temperature: 0.7 }).invoke([
-    ["system", system],
+    ["system", ghostwriterPrompt(toneMarkers, samples)],
     ["human", prompt],
   ]);
 

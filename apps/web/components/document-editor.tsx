@@ -81,6 +81,10 @@ import {
 } from "lexical";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
+import {
+  AutocompleteNode,
+  AutocompletePlugin,
+} from "@/components/document-autocomplete";
 import { DocumentPages, PAGE_WIDTH } from "@/components/document-pages";
 import {
   $blockOf,
@@ -279,6 +283,7 @@ const theme = {
 };
 
 const nodes = [
+  AutocompleteNode,
   HeadingNode,
   QuoteNode,
   ListNode,
@@ -1304,6 +1309,7 @@ function DocumentSurface({
           <DraftBar />
         </div>
         <HistoryPlugin />
+        <AutocompletePlugin />
         <ListPlugin />
         <LinkPlugin />
         <MarkdownShortcutPlugin transformers={TRANSFORMERS} />
