@@ -86,7 +86,9 @@ export const TABLE: ElementTransformer = {
   // row of dashes turns the row above it into the header, and any other row
   // gathers the rows of text before it into a table.
   replace: (parent, _children, match) => {
-    if (DIVIDER.test(match[0])) {
+    const line = match[0] ?? "";
+
+    if (DIVIDER.test(line)) {
       const table = parent.getPreviousSibling();
 
       if (!$isTableNode(table)) {
@@ -111,7 +113,7 @@ export const TABLE: ElementTransformer = {
       return;
     }
 
-    const first = $cells(match[0]);
+    const first = $cells(line);
 
     if (!first) {
       return;
