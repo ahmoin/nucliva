@@ -50,7 +50,8 @@
   --font-sans: var(--font-sans);
 }
 
-:root {
+:root,
+.light {
   --background: oklch(0.99 0.004 165);
   --foreground: oklch(0.18 0.02 165);
   --card: oklch(0.997 0.003 165);

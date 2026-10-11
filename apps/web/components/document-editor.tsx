@@ -3,33 +3,30 @@
 import {
   ArrowClockwiseIcon,
   ArrowCounterClockwiseIcon,
-  ArrowsOutIcon,
   ArrowUpIcon,
+  CaretDownIcon,
+  CheckIcon,
   ListBulletsIcon,
-  MagnifyingGlassMinusIcon,
-  MagnifyingGlassPlusIcon,
+  MinusIcon,
+  PlusIcon,
   QuotesIcon,
   SparkleIcon,
   TextBIcon,
-  TextHOneIcon,
-  TextHTwoIcon,
   TextItalicIcon,
 } from "@phosphor-icons/react";
-import { CodeNode } from "@lexical/code";
+import { $isCodeNode, CodeNode } from "@lexical/code";
 import { LinkNode } from "@lexical/link";
 import {
-  INSERT_UNORDERED_LIST_COMMAND,
+  $createListItemNode,
+  $createListNode,
+  $isListItemNode,
+  $isListNode,
   ListItemNode,
   ListNode,
 } from "@lexical/list";
-import {
-  $convertFromMarkdownString,
-  $convertToMarkdownString,
-  TRANSFORMERS,
-} from "@lexical/markdown";
+import { $convertFromMarkdownString, TRANSFORMERS } from "@lexical/markdown";
 import { LexicalComposer } from "@lexical/react/LexicalComposer";
 import { useLexicalComposerContext } from "@lexical/react/LexicalComposerContext";
-import { ContentEditable } from "@lexical/react/LexicalContentEditable";
 import { LexicalErrorBoundary } from "@lexical/react/LexicalErrorBoundary";
 import { HistoryPlugin } from "@lexical/react/LexicalHistoryPlugin";
 import { LinkPlugin } from "@lexical/react/LexicalLinkPlugin";
@@ -38,57 +35,242 @@ import { MarkdownShortcutPlugin } from "@lexical/react/LexicalMarkdownShortcutPl
 import { OnChangePlugin } from "@lexical/react/LexicalOnChangePlugin";
 import { RichTextPlugin } from "@lexical/react/LexicalRichTextPlugin";
 import {
-  $createHeadingNode,
   $createQuoteNode,
+  $isQuoteNode,
   HeadingNode,
   QuoteNode,
 } from "@lexical/rich-text";
-import { $setBlocksType } from "@lexical/selection";
+import {
+  $getSelectionStyleValueForProperty,
+  $patchStyleText,
+  getCSSFromStyleObject,
+} from "@lexical/selection";
 import { Button } from "@workspace/ui/components/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuGroup,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
+  DropdownMenuSeparator,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
+  DropdownMenuTrigger,
+} from "@workspace/ui/components/dropdown-menu";
 import { Input } from "@workspace/ui/components/input";
 import { Separator } from "@workspace/ui/components/separator";
+import { Toggle } from "@workspace/ui/components/toggle";
 import {
   $getRoot,
   $getSelection,
+  $getState,
   $isRangeSelection,
+  $isTextNode,
+  $setState,
   type EditorState,
   type ElementNode,
   FORMAT_TEXT_COMMAND,
+  getStyleObjectFromCSS,
   REDO_COMMAND,
+  type SerializedEditorState,
+  type SerializedElementNode,
   UNDO_COMMAND,
 } from "lexical";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
+import { DocumentPages, PAGE_WIDTH } from "@/components/document-pages";
 import {
-  $isPageNode,
-  PAGE_HEIGHT,
-  PAGE_WIDTH,
-  PageNode,
-} from "@/components/page-node";
-import { PaginationPlugin } from "@/components/pagination-plugin";
+  $blockOf,
+  $selectedBlocks,
+  $setStyle,
+  $styleOf,
+  $swapBlocks,
+  FORMAT_PROPERTIES,
+  styleFor,
+  stylesState,
+  textStyles,
+  useTextStyles,
+} from "@/components/document-styles";
 import { localDb } from "@/lib/local-db";
 
-const ZOOM_STEP = 0.25;
-const ZOOM_MIN = 0.5;
-const ZOOM_MAX = 3;
+const zoomLevels = [50, 75, 90, 100, 125, 150, 200];
 
+// The toolbar's menu buttons show a value, so they read as plain text and not
+// as the app's uppercase button labels.
+const menuButtonClass =
+  "justify-between px-2 font-normal text-sm normal-case tracking-normal";
+
+// A toolbar toggle is as wide as the icon buttons beside it. While on it is lit
+// in the brand colour: the hover shade alone would look the same on and off
+// with the pointer still over it.
+const toggleClass = "px-0 aria-pressed:bg-primary/15 aria-pressed:text-primary";
+
+// Blocks that are not a text style but still get named on the style button.
+// Anything else counts as normal text.
+const otherBlocks: Record<string, string> = { code: "Code" };
+
+// A style row is drawn in its own look, but never so big it takes over the menu.
+const PREVIEW_SIZE_MAX = "36px";
+
+const withoutFormat = (css: string) =>
+  getCSSFromStyleObject(
+    Object.fromEntries(
+      Object.entries(getStyleObjectFromCSS(css)).filter(
+        ([property]) => !FORMAT_PROPERTIES.includes(property)
+      )
+    )
+  );
+
+// Formatting put directly on text hides its style's own. Text that is given a
+// style drops it, so the style shows. This reads the selection afresh, because
+// swapping a block for another replaces the one the caller was holding.
+function $clearFormatting() {
+  const selection = $getSelection();
+
+  if (!$isRangeSelection(selection)) {
+    return;
+  }
+
+  for (const block of $selectedBlocks(selection)) {
+    for (const node of block.getAllTextNodes()) {
+      node.setStyle(withoutFormat(node.getStyle()));
+    }
+
+    block.setTextStyle(withoutFormat(block.getTextStyle()));
+  }
+
+  selection.setStyle(withoutFormat(selection.style));
+}
+
+// A bullet, as opposed to an item of a numbered list.
+const $isBullet = (block: ElementNode) => {
+  const list = block.getParent();
+
+  return (
+    $isListItemNode(block) &&
+    $isListNode(list) &&
+    list.getListType() === "bullet"
+  );
+};
+
+interface Font {
+  family: string;
+  name: string;
+  weights?: number[];
+}
+
+// The brand fonts are the ones app/layout.tsx loads, listed with the weights
+// those files ship with. Instrument Sans comes first: it is what a document
+// uses by default.
+const brandFonts: Font[] = [
+  {
+    family: "Instrument Sans, sans-serif",
+    name: "Instrument Sans",
+    weights: [400, 500, 600, 700],
+  },
+  {
+    family: "Bricolage Grotesque, sans-serif",
+    name: "Bricolage Grotesque",
+    weights: [200, 300, 400, 500, 600, 700, 800],
+  },
+  {
+    family: "Geist Mono, monospace",
+    name: "Geist Mono",
+    weights: [100, 200, 300, 400, 500, 600, 700, 800, 900],
+  },
+];
+
+// System fonts only come in regular and bold, which the Bold button covers.
+const systemFonts: Font[] = [
+  { family: "Arial, sans-serif", name: "Arial" },
+  { family: "Courier New, monospace", name: "Courier New" },
+  { family: "Georgia, serif", name: "Georgia" },
+  { family: "Times New Roman, serif", name: "Times New Roman" },
+  { family: "Verdana, sans-serif", name: "Verdana" },
+];
+
+const families: Record<string, string> = Object.fromEntries(
+  [...brandFonts, ...systemFonts].map((font) => [font.name, font.family])
+);
+
+const weightNames: Record<number, string> = {
+  100: "Thin",
+  200: "Extra Light",
+  300: "Light",
+  400: "Normal",
+  500: "Medium",
+  600: "Semi Bold",
+  700: "Bold",
+  800: "Extra Bold",
+  900: "Black",
+};
+
+// Menu rows are styled as uppercase labels by default. Rows that show a value,
+// like a font name or a zoom level, read as written instead.
+const plainItemClass = "font-normal text-sm normal-case tracking-normal";
+
+// The first family in a CSS font list, without its quotes, is the font's name.
+const fontName = (family: string) =>
+  (family.split(",")[0] ?? "").replaceAll(/["']/g, "").trim();
+
+const FONT_SIZE_MIN = 1;
+const FONT_SIZE_MAX = 400;
+
+// Ten columns: greys, then pure colours, then three tints and three shades of
+// each of those colours.
+const textColors = [
+  "#000000 #434343 #666666 #999999 #b7b7b7 #cccccc #d9d9d9 #efefef #f3f3f3 #ffffff",
+  "#980000 #ff0000 #ff9900 #ffff00 #00ff00 #00ffff #4a86e8 #0000ff #9900ff #ff00ff",
+  "#e6b8af #f4cccc #fce5cd #fff2cc #d9ead3 #d0e0e3 #c9daf8 #cfe2f3 #d9d2e9 #ead1dc",
+  "#dd7e6b #ea9999 #f9cb9c #ffe599 #b6d7a8 #a2c4c9 #a4c2f4 #9fc5e8 #b4a7d6 #d5a6bd",
+  "#cc4125 #e06666 #f6b26b #ffd966 #93c47d #76a5af #6d9eeb #6fa8dc #8e7cc3 #c27ba0",
+  "#a61c00 #cc0000 #e69138 #f1c232 #6aa84f #45818e #3c78d8 #3d85c6 #674ea7 #a64d79",
+  "#85200c #990000 #b45f06 #bf9000 #38761d #134f5c #1155cc #0b5394 #351c75 #741b47",
+  "#5b0f00 #660000 #783f04 #7f6000 #274e13 #0c343d #1c4587 #073763 #20124d #4c1130",
+].flatMap((row) => row.split(" "));
+
+// One row of the colour menu, leaving a cell for the button that adds one.
+const CUSTOM_COLORS_SHOWN = 9;
+
+// The colours in the document that are not in the palette, most used first. A
+// colour counts for as much text as wears it.
+function $customColors() {
+  const usage = new Map<string, number>();
+
+  for (const node of $getRoot().getAllTextNodes()) {
+    const value = getStyleObjectFromCSS(node.getStyle()).color?.toLowerCase();
+
+    if (value && !textColors.includes(value)) {
+      usage.set(value, (usage.get(value) ?? 0) + node.getTextContentSize());
+    }
+  }
+
+  return [...usage]
+    .sort(([, a], [, b]) => b - a)
+    .slice(0, CUSTOM_COLORS_SHOWN)
+    .map(([value]) => value);
+}
+
+// Paragraphs and headings have no classes here. How text looks comes from its
+// text style, which each block is given as it is drawn.
 const theme = {
   code: "my-3 block bg-muted p-3 font-mono text-[15px]",
-  heading: {
-    h1: "mt-5 mb-3 font-bold text-[32px] leading-tight tracking-tight",
-    h2: "mt-4 mb-3 font-bold text-[24px] leading-tight tracking-tight",
-    h3: "mt-4 mb-2 font-semibold text-[19px] leading-tight",
-  },
   link: "text-primary underline underline-offset-2",
   list: {
-    listitem: "my-1",
+    // The bullet takes the look of the first character, from variables the
+    // item is given as it is drawn. Without them it follows the item.
+    listitem:
+      "my-1 marker:font-(--marker-font-weight) marker:font-(family-name:--marker-font-family) marker:text-(--marker-color) marker:text-(length:--marker-font-size)",
     ol: "my-3 list-decimal pl-7",
     ul: "my-3 list-disc pl-7",
   },
-  paragraph: "mb-3 leading-[1.5]",
   quote: "my-3 border-primary border-l-2 pl-4 text-muted-foreground italic",
   text: {
-    bold: "font-bold",
+    // Important, so Bold still shows on text that has a font weight of its own.
+    bold: "font-bold!",
     code: "bg-muted px-1 font-mono text-[15px]",
     italic: "italic",
     strikethrough: "line-through",
@@ -103,8 +285,21 @@ const nodes = [
   ListItemNode,
   LinkNode,
   CodeNode,
-  PageNode,
 ];
+
+// Documents saved while pages were nodes still wrap their blocks in them.
+function serializeContent(content: object) {
+  const { root } = content as Partial<
+    SerializedEditorState<SerializedElementNode>
+  >;
+  const children = root?.children.flatMap((node) =>
+    node.type === "page" ? node.children : node
+  );
+
+  return children?.length
+    ? JSON.stringify({ root: { ...root, children } })
+    : undefined;
+}
 
 const draftStarters = [
   { label: "Email draft", prompt: "Write an email about " },
@@ -123,6 +318,235 @@ const statusLabel: Record<SaveStatus, string> = {
 
 function Toolbar() {
   const [editor] = useLexicalComposerContext();
+  const [font, setFont] = useState<string | null>(null);
+  const [fontSize, setFontSize] = useState<number | null>(null);
+  const [weight, setWeight] = useState<number | null>(null);
+  const [color, setColor] = useState<string | null>(null);
+  const [textStyle, setTextStyle] = useState("paragraph");
+  const [bulleted, setBulleted] = useState(false);
+  const [quoted, setQuoted] = useState(false);
+  const [styleMenuOpen, setStyleMenuOpen] = useState(false);
+  const [fontMenuOpen, setFontMenuOpen] = useState(false);
+  // Ahead of the reading below, which needs the page to show the current styles.
+  const custom = useTextStyles();
+  const [colorMenuOpen, setColorMenuOpen] = useState(false);
+  const [customColors, setCustomColors] = useState<string[]>([]);
+  // What is being typed into the size box, until Enter applies it.
+  const [sizeDraft, setSizeDraft] = useState<string | null>(null);
+
+  useEffect(() => {
+    // Text without a font, size or weight of its own shows the one it
+    // inherits, so headings and code read correctly. With no caret yet, that
+    // is the document's own.
+    const read = () => {
+      const selection = $getSelection();
+      const range = $isRangeSelection(selection) ? selection : null;
+      const element = range
+        ? editor.getElementByKey(range.anchor.key)
+        : editor.getRootElement();
+
+      if (!element) {
+        return;
+      }
+
+      const inherited = getComputedStyle(element);
+      const name = fontName(inherited.fontFamily);
+      const block = range ? $blockOf(range.anchor.getNode()) : null;
+      const blocks = range ? [...$selectedBlocks(range)] : [];
+      const valueOf = (property: string, fallback: string) =>
+        range
+          ? $getSelectionStyleValueForProperty(range, property, fallback)
+          : fallback;
+
+      setTextStyle($isCodeNode(block) ? "code" : $styleOf(block));
+      // A button is lit when everything selected is what it makes.
+      setBulleted(blocks.length > 0 && blocks.every($isBullet));
+      setQuoted(blocks.length > 0 && blocks.every($isQuoteNode));
+      setFont(fontName(valueOf("font-family", families[name] ?? name)) || null);
+      setFontSize(
+        Number.parseFloat(valueOf("font-size", inherited.fontSize)) || null
+      );
+      setWeight(
+        Number.parseFloat(valueOf("font-weight", inherited.fontWeight)) || null
+      );
+      setColor(valueOf("color", inherited.color) || null);
+    };
+
+    editor.getEditorState().read(read);
+
+    return editor.registerUpdateListener(({ editorState }) =>
+      editorState.read(read)
+    );
+  }, [editor]);
+
+  // A font row carries its family, and a weight row its weight as well. A row
+  // without a weight puts the text back on the font's regular weight.
+  const pickFont = useCallback(
+    (event: React.MouseEvent<HTMLElement>) => {
+      const { family, weight: picked } = event.currentTarget.dataset;
+
+      // A row that opens a weight menu would otherwise leave the menu open.
+      setFontMenuOpen(false);
+      editor.update(() => {
+        const selection = $getSelection();
+
+        if (!$isRangeSelection(selection)) {
+          return;
+        }
+
+        $patchStyleText(selection, {
+          "font-family": family ?? null,
+          "font-weight": picked ?? null,
+        });
+
+        // A chosen weight replaces bold, so the text shows exactly that weight.
+        if (
+          picked &&
+          (!selection.isCollapsed() || selection.hasFormat("bold"))
+        ) {
+          selection.formatText("bold", 0);
+        }
+      });
+    },
+    [editor]
+  );
+  const applyColor = useCallback(
+    (value: string) => {
+      editor.update(() => {
+        const selection = $getSelection();
+
+        if ($isRangeSelection(selection)) {
+          $patchStyleText(selection, { color: value });
+        }
+      });
+    },
+    [editor]
+  );
+  const pickColor = useCallback(
+    (event: React.MouseEvent<HTMLElement>) => {
+      const { color: picked } = event.currentTarget.dataset;
+
+      if (picked) {
+        applyColor(picked);
+      }
+    },
+    [applyColor]
+  );
+  // The document's custom colours are read afresh each time the menu opens.
+  const toggleColorMenu = useCallback(
+    (open: boolean) => {
+      setColorMenuOpen(open);
+
+      if (open) {
+        setCustomColors(editor.getEditorState().read($customColors));
+      }
+    },
+    [editor]
+  );
+  // The browser's picker reports every colour dragged across. Only the one it
+  // closes on is applied, so undo steps back over it once.
+  const customColor = useCallback(
+    (input: HTMLInputElement | null) => {
+      if (!input) {
+        return;
+      }
+
+      const apply = () => {
+        setColorMenuOpen(false);
+        applyColor(input.value);
+      };
+
+      input.addEventListener("change", apply);
+
+      return () => input.removeEventListener("change", apply);
+    },
+    [applyColor]
+  );
+  // Each piece of selected text gets its own next size, so growing a heading
+  // and a paragraph together keeps them apart.
+  const changeFontSize = useCallback(
+    (next: (size: number) => number) => {
+      const root = editor.getRootElement();
+
+      editor.update(() => {
+        const selection = $getSelection();
+
+        if (!(root && $isRangeSelection(selection))) {
+          return;
+        }
+
+        // Lexical asks more than once about an empty block the caret is in.
+        // Each answer is kept, so a step is not taken twice.
+        const sizes = new Map<string, string>();
+
+        $patchStyleText(selection, {
+          "font-size": (current, target) => {
+            // Text with no size of its own is as big as its block.
+            const node = $isRangeSelection(target)
+              ? target.anchor.getNode()
+              : target;
+            const block = $isTextNode(node) ? node.getParentOrThrow() : node;
+            const element = editor.getElementByKey(block.getKey()) ?? root;
+            const size = Number.parseFloat(
+              current ?? getComputedStyle(element).fontSize
+            );
+            const answer =
+              sizes.get(node.getKey()) ??
+              `${Math.min(FONT_SIZE_MAX, Math.max(FONT_SIZE_MIN, next(size)))}px`;
+
+            sizes.set(node.getKey(), answer);
+
+            return answer;
+          },
+        });
+      });
+    },
+    [editor]
+  );
+  const shrinkFont = useCallback(
+    () => changeFontSize((size) => size - 1),
+    [changeFontSize]
+  );
+  const growFont = useCallback(
+    () => changeFontSize((size) => size + 1),
+    [changeFontSize]
+  );
+  const handleSizeChange = useCallback(
+    (event: React.ChangeEvent<HTMLInputElement>) =>
+      setSizeDraft(event.target.value),
+    []
+  );
+  const selectSize = useCallback(
+    (event: React.FocusEvent<HTMLInputElement>) => event.target.select(),
+    []
+  );
+  const discardSize = useCallback(() => setSizeDraft(null), []);
+  // Enter applies what was typed, to the nearest half. Escape, or clicking
+  // away, leaves the size as it was. Either way the caret goes back to the
+  // document.
+  const handleSizeKey = useCallback(
+    (event: React.KeyboardEvent<HTMLInputElement>) => {
+      if (event.key !== "Enter" && event.key !== "Escape") {
+        return;
+      }
+
+      const typed = Number.parseFloat(sizeDraft ?? "");
+
+      // Focus is about to move, and the key press must not follow it into
+      // the document.
+      event.preventDefault();
+
+      if (event.key === "Enter" && !Number.isNaN(typed)) {
+        changeFontSize(() => Math.round(typed * 2) / 2);
+      }
+
+      editor.focus();
+    },
+    [changeFontSize, editor, sizeDraft]
+  );
+  // Picking from a menu hands focus back to the document instead of leaving
+  // it on the menu button.
+  const focusEditor = useCallback(() => editor.getRootElement(), [editor]);
 
   const undo = useCallback(
     () => editor.dispatchCommand(UNDO_COMMAND, undefined),
@@ -140,33 +564,186 @@ function Toolbar() {
     () => editor.dispatchCommand(FORMAT_TEXT_COMMAND, "italic"),
     [editor]
   );
-  const list = useCallback(
-    () => editor.dispatchCommand(INSERT_UNORDERED_LIST_COMMAND, undefined),
-    [editor]
-  );
-
-  const setBlock = useCallback(
-    (create: () => ElementNode) => {
+  // Bullets and quotes are kinds of block, and the text style is kept apart
+  // from the kind. A heading made a bullet stays a heading, and is one again
+  // once it stops being a bullet.
+  const toggleList = useCallback(
+    (pressed: boolean) => {
       editor.update(() => {
         const selection = $getSelection();
 
-        if ($isRangeSelection(selection)) {
-          $setBlocksType(selection, create);
+        if (!$isRangeSelection(selection)) {
+          return;
+        }
+
+        if (pressed) {
+          // A numbered list becomes a bulleted one.
+          for (const block of $selectedBlocks(selection)) {
+            const list = block.getParent();
+
+            if ($isListItemNode(block) && $isListNode(list)) {
+              list.setListType("bullet");
+            }
+          }
+        }
+
+        const items = $swapBlocks((block) => {
+          if ($isListItemNode(block) === pressed) {
+            return null;
+          }
+
+          const tag = $styleOf(block);
+
+          return pressed
+            ? $setStyle($createListItemNode(), tag)
+            : styleFor(tag).create();
+        });
+
+        if (!pressed) {
+          return;
+        }
+
+        // A new item joins the list before it, or starts one. Lexical joins
+        // that to a list that follows.
+        for (const item of items) {
+          const previous = item.getPreviousSibling();
+
+          if ($isListNode(previous) && previous.getListType() === "bullet") {
+            previous.append(item);
+          } else {
+            const list = $createListNode("bullet");
+
+            item.insertBefore(list);
+            list.append(item);
+          }
         }
       });
     },
     [editor]
   );
+  const toggleQuote = useCallback(
+    (pressed: boolean) => {
+      editor.update(() => {
+        $swapBlocks((block) => {
+          if ($isQuoteNode(block) === pressed) {
+            return null;
+          }
 
-  const h1 = useCallback(
-    () => setBlock(() => $createHeadingNode("h1")),
-    [setBlock]
+          const tag = $styleOf(block);
+
+          return pressed
+            ? $setStyle($createQuoteNode(), tag)
+            : styleFor(tag).create();
+        });
+      });
+    },
+    [editor]
   );
-  const h2 = useCallback(
-    () => setBlock(() => $createHeadingNode("h2")),
-    [setBlock]
+
+  // A style row gives the selected blocks that style. An "update" row first
+  // makes the style look like the text at the caret, for the whole document.
+  const pickStyle = useCallback(
+    (event: React.MouseEvent<HTMLElement>) => {
+      const { tag, update } = event.currentTarget.dataset;
+      const style = textStyles.find((item) => item.tag === tag);
+
+      setStyleMenuOpen(false);
+      editor.update(() => {
+        if (!(style && $isRangeSelection($getSelection()))) {
+          return;
+        }
+
+        if (update) {
+          const root = $getRoot();
+          const styles = $getState(root, stylesState);
+
+          $setState(root, stylesState, {
+            ...styles,
+            [style.tag]: {
+              ...styles[style.tag],
+              ...(color && { color }),
+              ...(font && { "font-family": families[font] ?? font }),
+              ...(fontSize && { "font-size": `${fontSize}px` }),
+              ...(weight && { "font-weight": `${weight}` }),
+            },
+          });
+        }
+
+        // A bullet or a quote takes the style and stays what it is. Any other
+        // block becomes the style's own.
+        $swapBlocks((block) => {
+          if ($isListItemNode(block) || $isQuoteNode(block)) {
+            $setStyle(block, style.tag);
+
+            return null;
+          }
+
+          return style.create();
+        });
+        $clearFormatting();
+      });
+    },
+    [color, editor, font, fontSize, weight]
   );
-  const quote = useCallback(() => setBlock($createQuoteNode), [setBlock]);
+  const resetStyles = useCallback(
+    () => editor.update(() => $setState($getRoot(), stylesState, {})),
+    [editor]
+  );
+
+  const swatch = (value: string) => (
+    <DropdownMenuItem
+      aria-label={value}
+      className="size-5 p-0 ring-1 ring-foreground/20 focus:ring-2 focus:ring-foreground data-[current=true]:ring-2 data-[current=true]:ring-primary"
+      data-color={value}
+      data-current={value === color}
+      key={value}
+      onClick={pickColor}
+      style={{ backgroundColor: value }}
+    />
+  );
+
+  const fontItem = (item: Font) =>
+    item.weights ? (
+      <DropdownMenuSub key={item.name}>
+        <DropdownMenuSubTrigger
+          className={plainItemClass}
+          data-family={item.family}
+          onClick={pickFont}
+          style={{ fontFamily: item.family }}
+        >
+          <span className="flex-1">{item.name}</span>
+          {item.name === font ? <CheckIcon /> : null}
+        </DropdownMenuSubTrigger>
+        <DropdownMenuSubContent>
+          {item.weights.map((value) => (
+            <DropdownMenuItem
+              className={plainItemClass}
+              data-family={item.family}
+              data-weight={value}
+              key={value}
+              onClick={pickFont}
+              style={{ fontFamily: item.family, fontWeight: value }}
+            >
+              {weightNames[value]}
+              {item.name === font && value === weight ? (
+                <CheckIcon className="ml-auto" />
+              ) : null}
+            </DropdownMenuItem>
+          ))}
+        </DropdownMenuSubContent>
+      </DropdownMenuSub>
+    ) : (
+      <DropdownMenuItem
+        className={plainItemClass}
+        data-family={item.family}
+        key={item.name}
+        onClick={pickFont}
+        style={{ fontFamily: item.family }}
+      >
+        {item.name}
+        {item.name === font ? <CheckIcon className="ml-auto" /> : null}
+      </DropdownMenuItem>
+    );
 
   return (
     <div className="flex shrink-0 items-center gap-1 border bg-card p-1">
@@ -176,7 +753,133 @@ function Toolbar() {
       <Button aria-label="Redo" onClick={redo} size="icon-sm" variant="ghost">
         <ArrowClockwiseIcon />
       </Button>
-      <Separator className="mx-1 h-5" orientation="vertical" />
+      <Separator
+        className="mx-1 h-5 data-vertical:self-auto"
+        orientation="vertical"
+      />
+      <DropdownMenu onOpenChange={setStyleMenuOpen} open={styleMenuOpen}>
+        <DropdownMenuTrigger
+          render={
+            <Button
+              aria-label="Text style"
+              className={`w-32 ${menuButtonClass}`}
+              size="sm"
+              variant="ghost"
+            />
+          }
+        >
+          <span className="truncate">
+            {otherBlocks[textStyle] ?? styleFor(textStyle).name}
+          </span>
+          <CaretDownIcon className="text-muted-foreground" />
+        </DropdownMenuTrigger>
+        <DropdownMenuContent className="min-w-64" finalFocus={focusEditor}>
+          {textStyles.map((item) => {
+            const format = { ...item.format, ...custom[item.tag] };
+
+            return (
+              <DropdownMenuSub key={item.tag}>
+                <DropdownMenuSubTrigger
+                  className="normal-case leading-tight tracking-normal"
+                  data-tag={item.tag}
+                  onClick={pickStyle}
+                  style={{
+                    fontFamily: format["font-family"],
+                    fontSize: `min(${format["font-size"]}, ${PREVIEW_SIZE_MAX})`,
+                    fontWeight: format["font-weight"],
+                  }}
+                >
+                  <span className="flex-1">{item.name}</span>
+                  {item.tag === textStyle ? <CheckIcon /> : null}
+                </DropdownMenuSubTrigger>
+                <DropdownMenuSubContent>
+                  <DropdownMenuItem
+                    className={plainItemClass}
+                    data-tag={item.tag}
+                    onClick={pickStyle}
+                  >
+                    Apply '{item.name}'
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    className={plainItemClass}
+                    data-tag={item.tag}
+                    data-update
+                    onClick={pickStyle}
+                  >
+                    Update '{item.name}' to match
+                  </DropdownMenuItem>
+                </DropdownMenuSubContent>
+              </DropdownMenuSub>
+            );
+          })}
+          <DropdownMenuSeparator />
+          <DropdownMenuItem
+            className={plainItemClass}
+            disabled={Object.keys(custom).length === 0}
+            onClick={resetStyles}
+          >
+            Reset styles
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+      <Separator
+        className="mx-1 h-5 data-vertical:self-auto"
+        orientation="vertical"
+      />
+      <DropdownMenu onOpenChange={setFontMenuOpen} open={fontMenuOpen}>
+        <DropdownMenuTrigger
+          render={
+            <Button
+              aria-label="Font"
+              className={`w-44 ${menuButtonClass}`}
+              size="sm"
+              variant="ghost"
+            />
+          }
+        >
+          <span className="truncate">{font}</span>
+          <CaretDownIcon className="text-muted-foreground" />
+        </DropdownMenuTrigger>
+        <DropdownMenuContent className="min-w-56" finalFocus={focusEditor}>
+          {brandFonts.map(fontItem)}
+          <DropdownMenuSeparator />
+          {systemFonts.map(fontItem)}
+        </DropdownMenuContent>
+      </DropdownMenu>
+      <Separator
+        className="mx-1 h-5 data-vertical:self-auto"
+        orientation="vertical"
+      />
+      <Button
+        aria-label="Decrease font size"
+        onClick={shrinkFont}
+        size="icon-sm"
+        variant="ghost"
+      >
+        <MinusIcon />
+      </Button>
+      <Input
+        aria-label="Font size"
+        className="h-7 w-12 border-input px-1 text-center"
+        inputMode="decimal"
+        onBlur={discardSize}
+        onChange={handleSizeChange}
+        onFocus={selectSize}
+        onKeyDown={handleSizeKey}
+        value={sizeDraft ?? fontSize ?? ""}
+      />
+      <Button
+        aria-label="Increase font size"
+        onClick={growFont}
+        size="icon-sm"
+        variant="ghost"
+      >
+        <PlusIcon />
+      </Button>
+      <Separator
+        className="mx-1 h-5 data-vertical:self-auto"
+        orientation="vertical"
+      />
       <Button aria-label="Bold" onClick={bold} size="icon-sm" variant="ghost">
         <TextBIcon />
       </Button>
@@ -188,24 +891,69 @@ function Toolbar() {
       >
         <TextItalicIcon />
       </Button>
-      <Separator className="mx-1 h-5" orientation="vertical" />
-      <Button aria-label="Heading 1" onClick={h1} size="icon-sm" variant="ghost">
-        <TextHOneIcon />
-      </Button>
-      <Button aria-label="Heading 2" onClick={h2} size="icon-sm" variant="ghost">
-        <TextHTwoIcon />
-      </Button>
-      <Button
+      <DropdownMenu onOpenChange={toggleColorMenu} open={colorMenuOpen}>
+        <DropdownMenuTrigger
+          render={
+            <Button
+              aria-label="Text color"
+              className="flex-col gap-0.5"
+              size="icon-sm"
+              variant="ghost"
+            />
+          }
+        >
+          A
+          <span
+            className="h-1 w-4 ring-1 ring-foreground/20"
+            style={{ backgroundColor: color ?? undefined }}
+          />
+        </DropdownMenuTrigger>
+        <DropdownMenuContent className="w-auto min-w-0" finalFocus={focusEditor}>
+          <div className="grid grid-cols-10 gap-1">
+            {textColors.map(swatch)}
+          </div>
+          <DropdownMenuSeparator />
+          <DropdownMenuGroup>
+            <DropdownMenuLabel className="px-0">Custom</DropdownMenuLabel>
+            <div className="grid grid-cols-10 gap-1">
+              {customColors.map(swatch)}
+              {/* The picker itself is invisible and covers the plus, so a click lands on it directly. */}
+              <span className="relative flex size-5 items-center justify-center ring-1 ring-foreground/20 hover:ring-2 hover:ring-foreground">
+                <PlusIcon className="size-3" />
+                <input
+                  aria-label="Custom text color"
+                  className="absolute inset-0 size-full cursor-pointer opacity-0"
+                  defaultValue="#000000"
+                  ref={customColor}
+                  type="color"
+                />
+              </span>
+            </div>
+          </DropdownMenuGroup>
+        </DropdownMenuContent>
+      </DropdownMenu>
+      <Separator
+        className="mx-1 h-5 data-vertical:self-auto"
+        orientation="vertical"
+      />
+      <Toggle
         aria-label="Bulleted list"
-        onClick={list}
-        size="icon-sm"
-        variant="ghost"
+        className={toggleClass}
+        onPressedChange={toggleList}
+        pressed={bulleted}
+        size="sm"
       >
         <ListBulletsIcon />
-      </Button>
-      <Button aria-label="Quote" onClick={quote} size="icon-sm" variant="ghost">
+      </Toggle>
+      <Toggle
+        aria-label="Quote"
+        className={toggleClass}
+        onPressedChange={toggleQuote}
+        pressed={quoted}
+        size="sm"
+      >
         <QuotesIcon />
-      </Button>
+      </Toggle>
     </div>
   );
 }
@@ -267,20 +1015,13 @@ function DraftBar() {
     }
 
     editor.update(() => {
-      const current = $getRoot()
-        .getChildren()
-        .map((child) =>
-          $isPageNode(child)
-            ? $convertToMarkdownString(TRANSFORMERS, child)
-            : ""
-        )
-        .filter(Boolean)
-        .join("\n\n");
+      const root = $getRoot();
+      // Importing replaces the document, so the existing blocks go back in
+      // front untouched. Markdown could not carry their fonts and sizes.
+      const existing = root.getTextContentSize() > 0 ? root.getChildren() : [];
 
-      $convertFromMarkdownString(
-        current ? `${current}\n\n${draft}` : draft,
-        TRANSFORMERS
-      );
+      $convertFromMarkdownString(draft, TRANSFORMERS);
+      root.splice(0, 0, existing);
     });
     setDraft(null);
     setPrompt("");
@@ -375,7 +1116,7 @@ function DocumentSurface({
   const [zoom, setZoom] = useState<number | null>(null);
   const [fit, setFit] = useState(1);
   const canvasRef = useRef<HTMLDivElement>(null);
-  const scale = zoom ?? fit;
+  const scale = zoom === null ? fit : zoom / 100;
   const pending = useRef<Record<string, unknown>>({});
   const latest = useRef({ content, title: initialTitle });
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -470,34 +1211,10 @@ function DocumentSurface({
     return () => observer.disconnect();
   }, []);
 
-  const zoomIn = useCallback(
-    () => setZoom(Math.min(ZOOM_MAX, scale + ZOOM_STEP)),
-    [scale]
+  const pickZoom = useCallback(
+    (value: number | "fit") => setZoom(value === "fit" ? null : value),
+    []
   );
-  const zoomOut = useCallback(
-    () => setZoom(Math.max(ZOOM_MIN, scale - ZOOM_STEP)),
-    [scale]
-  );
-  const zoomFit = useCallback(() => setZoom(null), []);
-
-  const [pageHeight, setPageHeight] = useState(PAGE_HEIGHT);
-  const pageRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    const page = pageRef.current as HTMLDivElement | null;
-
-    if (!page) {
-      return;
-    }
-
-    const observer = new ResizeObserver(([entry]) => {
-      setPageHeight(entry?.target.scrollHeight ?? PAGE_HEIGHT);
-    });
-
-    observer.observe(page);
-
-    return () => observer.disconnect();
-  }, []);
 
   const [slot, setSlot] = useState<HTMLElement | null>(null);
 
@@ -506,7 +1223,7 @@ function DocumentSurface({
   }, []);
 
   const initialConfig = {
-    editorState: "root" in content ? JSON.stringify(content) : undefined,
+    editorState: serializeContent(content),
     namespace: "Document",
     nodes,
     onError: (error: Error) => console.error(error),
@@ -527,34 +1244,47 @@ function DocumentSurface({
                   value={title}
                 />
                 <Toolbar />
-                <div className="flex shrink-0 items-center gap-1 border bg-card p-1">
-                  <Button
-                    aria-label="Zoom out"
-                    onClick={zoomOut}
-                    size="icon-sm"
-                    variant="ghost"
-                  >
-                    <MagnifyingGlassMinusIcon />
-                  </Button>
-                  <span className="w-12 text-center text-muted-foreground text-xs tabular-nums">
-                    {Math.round(scale * 100)}%
-                  </span>
-                  <Button
-                    aria-label="Zoom in"
-                    onClick={zoomIn}
-                    size="icon-sm"
-                    variant="ghost"
-                  >
-                    <MagnifyingGlassPlusIcon />
-                  </Button>
-                  <Button
-                    aria-label="Fit page to width"
-                    onClick={zoomFit}
-                    size="icon-sm"
-                    variant="ghost"
-                  >
-                    <ArrowsOutIcon />
-                  </Button>
+                <div className="flex shrink-0 items-center border bg-card p-1">
+                  <DropdownMenu>
+                    <DropdownMenuTrigger
+                      render={
+                        <Button
+                          aria-label="Zoom"
+                          className={`w-20 tabular-nums ${menuButtonClass}`}
+                          size="sm"
+                          variant="ghost"
+                        />
+                      }
+                    >
+                      {zoom === null ? "Fit" : `${zoom}%`}
+                      <CaretDownIcon className="text-muted-foreground" />
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent className="min-w-28">
+                      <DropdownMenuRadioGroup
+                        onValueChange={pickZoom}
+                        value={zoom ?? "fit"}
+                      >
+                        <DropdownMenuRadioItem
+                          className={plainItemClass}
+                          closeOnClick
+                          value="fit"
+                        >
+                          Fit
+                        </DropdownMenuRadioItem>
+                        <DropdownMenuSeparator />
+                        {zoomLevels.map((level) => (
+                          <DropdownMenuRadioItem
+                            className={plainItemClass}
+                            closeOnClick
+                            key={level}
+                            value={level}
+                          >
+                            {level}%
+                          </DropdownMenuRadioItem>
+                        ))}
+                      </DropdownMenuRadioGroup>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
                 </div>
                 <span className="ml-auto shrink-0 text-muted-foreground text-xs">
                   {statusLabel[status]}
@@ -564,38 +1294,15 @@ function DocumentSurface({
             )
           : null}
         <div className="overflow-auto" ref={canvasRef}>
-          <div
-            className="mx-auto"
-            style={{
-              height: pageHeight * scale,
-              width: PAGE_WIDTH * scale,
-            }}
-          >
-            <div
-              ref={pageRef}
-              style={{
-                transform: `scale(${scale})`,
-                transformOrigin: "top left",
-                width: PAGE_WIDTH,
-              }}
-            >
-              <RichTextPlugin
-                contentEditable={
-                  <ContentEditable
-                    aria-label="Document"
-                    className="flex flex-col gap-6 outline-none"
-                  />
-                }
-                ErrorBoundary={LexicalErrorBoundary}
-                placeholder={null}
-              />
-            </div>
-          </div>
+          <RichTextPlugin
+            contentEditable={<DocumentPages scale={scale} />}
+            ErrorBoundary={LexicalErrorBoundary}
+            placeholder={null}
+          />
         </div>
         <div className="sticky bottom-4 z-10 mx-auto w-full max-w-2xl">
           <DraftBar />
         </div>
-        <PaginationPlugin />
         <HistoryPlugin />
         <ListPlugin />
         <LinkPlugin />
