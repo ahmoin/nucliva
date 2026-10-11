@@ -11,6 +11,10 @@ import {
 } from "lexical";
 import { Fragment, useEffect, useLayoutEffect, useRef, useState } from "react";
 import {
+  SuggestionButtons,
+  useSuggestionMarks,
+} from "@/components/document-suggestions";
+import {
   type Margins,
   useMargins,
   useStyledBlocks,
@@ -95,7 +99,14 @@ function revealCaret(root: HTMLElement) {
 // The document stays one continuous flow. A full-width float sits where each
 // page ends, and since text cannot overlap a float, the browser itself moves
 // every line that would cross a page boundary onto the next page.
-export function DocumentPages({ scale }: { scale: number }) {
+export function DocumentPages({
+  change,
+  scale,
+}: {
+  // Which of the AI's changes has its Accept and Reject buttons showing.
+  change: number;
+  scale: number;
+}) {
   const [editor] = useLexicalComposerContext();
   const [pages, setPages] = useState(1);
   const [caret, setCaret] = useState<{
@@ -112,6 +123,7 @@ export function DocumentPages({ scale }: { scale: number }) {
   useStyledBlocks();
   const margins = useMargins();
   useTabStops();
+  useSuggestionMarks();
 
   // Inside text the browser draws the caret in the font of that text, even
   // when the next character will be typed in another one. A caret of our own
@@ -247,7 +259,7 @@ export function DocumentPages({ scale }: { scale: number }) {
         <ContentEditable
           aria-label="Document"
           className={cn(
-            "peer font-(--paragraph-font-weight) font-(family-name:--paragraph-font-family) text-(--paragraph-color) text-(length:--paragraph-font-size) outline-none [tab-size:48px] **:has-[>br:only-child]:w-full **:has-[>br:only-child]:contain-layout",
+            "peer font-(--paragraph-font-weight) font-(family-name:--paragraph-font-family) text-(--paragraph-color) text-(length:--paragraph-font-size) outline-none [tab-size:48px] **:data-[suggestion=add]:bg-emerald-500/15 **:data-[suggestion=add]:shadow-[inset_3px_0_0_#10b981] **:data-[suggestion=remove]:bg-red-500/15 **:data-[suggestion=remove]:line-through **:data-[suggestion=remove]:decoration-red-500/60 **:data-[suggestion=remove]:shadow-[inset_3px_0_0_#ef4444] **:data-[suggestion-text=add]:bg-emerald-500/25 **:data-[suggestion-text=remove]:bg-red-500/25 **:data-[suggestion-text=remove]:line-through **:data-[suggestion-text=remove]:decoration-red-500/70 **:has-[>br:only-child]:w-full **:has-[>br:only-child]:contain-layout [&>*]:transition-[background-color,box-shadow] [&>*]:duration-300 **:data-lexical-text:transition-colors **:data-lexical-text:duration-300 motion-reduce:[&>*]:transition-none motion-reduce:**:data-lexical-text:transition-none",
             caret && "caret-transparent"
           )}
           style={{ padding: contentPadding(margins) }}
@@ -259,6 +271,13 @@ export function DocumentPages({ scale }: { scale: number }) {
             style={caret}
           />
         ) : null}
+        <SuggestionButtons
+          current={change}
+          layer={layerRef}
+          margin={PAGE_MARGIN}
+          pitch={PAGE_PITCH}
+          scale={scale}
+        />
       </div>
       {/* Blocks with a border or background run through the page breaks, so the margins and gaps are painted over them. */}
       <div aria-hidden className="pointer-events-none absolute inset-0">

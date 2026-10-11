@@ -3,7 +3,6 @@
 import {
   ArrowClockwiseIcon,
   ArrowCounterClockwiseIcon,
-  ArrowUpIcon,
   CaretDownIcon,
   CheckIcon,
   ListBulletsIcon,
@@ -11,7 +10,6 @@ import {
   PlusIcon,
   QuotesIcon,
   RulerIcon,
-  SparkleIcon,
   TextAlignCenterIcon,
   TextAlignJustifyIcon,
   TextAlignLeftIcon,
@@ -30,7 +28,6 @@ import {
   ListItemNode,
   ListNode,
 } from "@lexical/list";
-import { $convertFromMarkdownString, TRANSFORMERS } from "@lexical/markdown";
 import { LexicalComposer } from "@lexical/react/LexicalComposer";
 import { useLexicalComposerContext } from "@lexical/react/LexicalComposerContext";
 import { LexicalErrorBoundary } from "@lexical/react/LexicalErrorBoundary";
@@ -41,6 +38,7 @@ import { MarkdownShortcutPlugin } from "@lexical/react/LexicalMarkdownShortcutPl
 import { OnChangePlugin } from "@lexical/react/LexicalOnChangePlugin";
 import { RichTextPlugin } from "@lexical/react/LexicalRichTextPlugin";
 import { TabIndentationPlugin } from "@lexical/react/LexicalTabIndentationPlugin";
+import { TablePlugin } from "@lexical/react/LexicalTablePlugin";
 import {
   $createQuoteNode,
   $isQuoteNode,
@@ -69,6 +67,7 @@ import {
 } from "@workspace/ui/components/dropdown-menu";
 import { Input } from "@workspace/ui/components/input";
 import { Separator } from "@workspace/ui/components/separator";
+import { TableCellNode, TableNode, TableRowNode } from "@lexical/table";
 import { Toggle } from "@workspace/ui/components/toggle";
 import {
   $getRoot,
@@ -93,7 +92,9 @@ import {
   AutocompleteNode,
   AutocompletePlugin,
 } from "@/components/document-autocomplete";
+import { DraftBar } from "@/components/document-draft-bar";
 import { DocumentPages, PAGE_WIDTH } from "@/components/document-pages";
+import { DOCUMENT_TRANSFORMERS } from "@/components/document-table";
 import { Ruler } from "@/components/document-ruler";
 import {
   $blockOf,
@@ -294,11 +295,14 @@ const theme = {
     // An item that only holds a nested list has no bullet of its own.
     nested: { listitem: "list-none" },
     listitem:
-      "my-1marker:font-(--marker-font-weight) marker:font-(family-name:--marker-font-family) marker:text-(--marker-color) marker:text-(length:--marker-font-size)",
+      "my-1 marker:font-(--marker-font-weight) marker:font-(family-name:--marker-font-family) marker:text-(--marker-color) marker:text-(length:--marker-font-size)",
     ol: "my-3 list-decimal pl-7",
     ul: "my-3 list-disc pl-7",
   },
   quote: "my-3 border-primary border-l-2 pl-4 text-muted-foreground italic",
+  table: "my-3 w-full table-fixed border-collapse",
+  tableCell: "border border-foreground/20 px-2 py-1 align-top",
+  tableCellHeader: "bg-muted text-left font-semibold",
   text: {
     // Important, so Bold still shows on text that has a font weight of its own.
     bold: "font-bold!",
@@ -317,6 +321,9 @@ const nodes = [
   ListItemNode,
   LinkNode,
   CodeNode,
+  TableNode,
+  TableRowNode,
+  TableCellNode,
 ];
 
 // Documents saved while pages were nodes still wrap their blocks in them.
@@ -332,13 +339,6 @@ function serializeContent(content: object) {
     ? JSON.stringify({ root: { ...root, children } })
     : undefined;
 }
-
-const draftStarters = [
-  { label: "Email draft", prompt: "Write an email about " },
-  { label: "Blog post", prompt: "Write a blog post about " },
-  { label: "Meeting notes", prompt: "Turn these notes into meeting notes: " },
-  { label: "Summary", prompt: "Summarize this: " },
-];
 
 type SaveStatus = "error" | "saved" | "saving";
 
@@ -1045,148 +1045,6 @@ function Toolbar() {
   );
 }
 
-function DraftBar() {
-  const [editor] = useLexicalComposerContext();
-  const [prompt, setPrompt] = useState("");
-  const [draft, setDraft] = useState<string | null>(null);
-  const [generating, setGenerating] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const inputRef = useRef<HTMLInputElement>(null);
-
-  const handlePromptChange = useCallback(
-    (event: React.ChangeEvent<HTMLInputElement>) =>
-      setPrompt(event.target.value),
-    []
-  );
-
-  const handleChip = useCallback(
-    (event: React.MouseEvent<HTMLButtonElement>) => {
-      setPrompt(event.currentTarget.dataset.prompt ?? "");
-      inputRef.current?.focus();
-    },
-    []
-  );
-
-  const generate = useCallback(async () => {
-    if (!prompt.trim()) {
-      return;
-    }
-
-    setGenerating(true);
-    setError(null);
-
-    try {
-      const response = await fetch("/api/draft", {
-        body: JSON.stringify({ prompt }),
-        headers: { "Content-Type": "application/json" },
-        method: "POST",
-      });
-
-      if (!response.ok) {
-        throw new Error("Draft request failed");
-      }
-
-      const data: { draft: string } = await response.json();
-
-      setDraft(data.draft);
-    } catch {
-      setError("Could not generate a draft. Try again.");
-    } finally {
-      setGenerating(false);
-    }
-  }, [prompt]);
-
-  const insert = useCallback(() => {
-    if (!draft) {
-      return;
-    }
-
-    editor.update(() => {
-      const root = $getRoot();
-      // Importing replaces the document, so the existing blocks go back in
-      // front untouched. Markdown could not carry their fonts and sizes.
-      const existing = root.getTextContentSize() > 0 ? root.getChildren() : [];
-
-      $convertFromMarkdownString(draft, TRANSFORMERS);
-      root.splice(0, 0, existing);
-    });
-    setDraft(null);
-    setPrompt("");
-  }, [draft, editor]);
-
-  const discard = useCallback(() => setDraft(null), []);
-
-  const submit = useCallback(
-    (event: React.FormEvent) => {
-      event.preventDefault();
-      generate();
-    },
-    [generate]
-  );
-
-  return (
-    <div className="relative flex flex-col gap-2 font-sans text-sm">
-      {draft ? (
-        <div className="absolute right-0 bottom-full left-0 mb-2 flex max-h-72 flex-col gap-3 overflow-y-auto border border-primary/40 bg-card p-4 shadow-lg">
-          <p className="whitespace-pre-wrap leading-6">{draft}</p>
-          <div className="flex gap-2">
-            <Button onClick={insert} size="sm">
-              Insert
-            </Button>
-            <Button onClick={discard} size="sm" variant="outline">
-              Discard
-            </Button>
-          </div>
-        </div>
-      ) : null}
-      <div className="flex items-center gap-2">
-        {draftStarters.map((starter) => (
-          <button
-            className="border bg-muted/60 px-3 py-1 text-[12px] transition-colors hover:bg-muted"
-            data-prompt={starter.prompt}
-            key={starter.label}
-            onClick={handleChip}
-            type="button"
-          >
-            {starter.label}
-          </button>
-        ))}
-        {error ? (
-          <span className="text-destructive text-xs">{error}</span>
-        ) : null}
-      </div>
-      <form
-        autoComplete="off"
-        className="flex items-center gap-2 border bg-card p-2 shadow-lg"
-        onSubmit={submit}
-      >
-        <SparkleIcon className="ml-1 size-5 shrink-0 text-primary" />
-        <Input
-          aria-label="What should we write?"
-          autoComplete="off"
-          className="h-8 border-none bg-transparent px-1 shadow-none focus-visible:ring-0"
-          data-1p-ignore
-          data-lpignore="true"
-          name="draft-prompt"
-          disabled={generating}
-          onChange={handlePromptChange}
-          placeholder="Write with Nucliva in your voice..."
-          ref={inputRef}
-          value={prompt}
-        />
-        <Button
-          aria-label="Generate draft"
-          disabled={generating || !prompt.trim()}
-          size="icon-sm"
-          type="submit"
-        >
-          {generating ? <SparkleIcon className="animate-pulse" /> : <ArrowUpIcon />}
-        </Button>
-      </form>
-    </div>
-  );
-}
-
 function DocumentSurface({
   content,
   id,
@@ -1203,6 +1061,8 @@ function DocumentSurface({
   const [zoom, setZoom] = useState<number | null>(null);
   const [fit, setFit] = useState(1);
   const [showRuler, setShowRuler] = useState(true);
+  // Which of the AI's changes the navigator is on: the one with the buttons.
+  const [change, setChange] = useState(0);
   const canvasRef = useRef<HTMLDivElement>(null);
   const scale = zoom === null ? fit : zoom / 100;
   const pending = useRef<Record<string, unknown>>({});
@@ -1395,20 +1255,21 @@ function DocumentSurface({
         <div className="overflow-auto" ref={canvasRef}>
           {showRuler ? <Ruler onHide={hideRuler} scale={scale} /> : null}
           <RichTextPlugin
-            contentEditable={<DocumentPages scale={scale} />}
+            contentEditable={<DocumentPages change={change} scale={scale} />}
             ErrorBoundary={LexicalErrorBoundary}
             placeholder={null}
           />
         </div>
         <div className="sticky bottom-4 z-10 mx-auto w-full max-w-2xl">
-          <DraftBar />
+          <DraftBar change={change} documentId={id} onChange={setChange} />
         </div>
         <HistoryPlugin />
         <AutocompletePlugin />
         <TabIndentationPlugin />
         <ListPlugin />
+        <TablePlugin />
         <LinkPlugin />
-        <MarkdownShortcutPlugin transformers={TRANSFORMERS} />
+        <MarkdownShortcutPlugin transformers={DOCUMENT_TRANSFORMERS} />
         <OnChangePlugin ignoreSelectionChange onChange={handleChange} />
       </div>
     </LexicalComposer>

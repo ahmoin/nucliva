@@ -1,6 +1,8 @@
 import { headers } from "next/headers";
 import { auth } from "@/lib/auth";
-import { writeInUserVoice } from "@/lib/style-engine";
+import { wantsCitations, wantsResearch } from "@/lib/research-intent";
+import { suggestEdits, type Turn } from "@/lib/style-engine";
+import type { Source } from "@/lib/tavily";
 
 export async function POST(request: Request) {
   const session = await auth.api.getSession({ headers: await headers() });
@@ -16,7 +18,38 @@ export async function POST(request: Request) {
     return Response.json({ error: "prompt is required" }, { status: 400 });
   }
 
-  const result = await writeInUserVoice({ prompt, userId: session.user.id });
+  // A request that asks for research is grounded in a web search, unless the
+  // caller says one way or the other. A caller that has already searched, as
+  // the editor does to show progress, sends what it found.
+  const research =
+    typeof body?.research === "boolean" ? body.research : wantsResearch(prompt);
+  const sources: Source[] | undefined = Array.isArray(body?.sources)
+    ? body.sources.filter(
+        (source: Partial<Source>) =>
+          typeof source?.url === "string" &&
+          typeof source.title === "string" &&
+          typeof source.content === "string"
+      )
+    : undefined;
+  const blocks: string[] = Array.isArray(body?.blocks)
+    ? body.blocks.filter((block: unknown) => typeof block === "string")
+    : [];
+  const history: Turn[] = Array.isArray(body?.history)
+    ? body.history.filter(
+        (turn: Partial<Turn>) =>
+          (turn?.role === "user" || turn?.role === "assistant") &&
+          typeof turn.text === "string"
+      )
+    : [];
+  const result = await suggestEdits({
+    blocks,
+    cite: wantsCitations(prompt),
+    history,
+    prompt,
+    research,
+    sources,
+    userId: session.user.id,
+  });
 
   return Response.json(result);
 }

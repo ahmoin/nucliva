@@ -426,7 +426,9 @@ export function Ruler({
 
   const marks: ReactNode[] = [];
   const first = -Math.floor(margins.left / EIGHTH);
-  const last = Math.floor((PAGE_WIDTH - margins.left) / EIGHTH);
+  // The last mark is before the edge of the page: a mark on it is a pixel wide
+  // and would stick out, and make the box around the page scroll sideways.
+  const last = Math.ceil((PAGE_WIDTH - margins.left) / EIGHTH) - 1;
 
   for (let step = first; step <= last; step += 1) {
     const x = margins.left + step * EIGHTH;
@@ -500,7 +502,7 @@ export function Ruler({
       <Handle
         label="Right margin"
         onMove={moveRight}
-        readout={inches(margins.right)}
+        readout={inches(PAGE_WIDTH - margins.left - margins.right)}
         scale={scale}
         side="bottom"
         x={PAGE_WIDTH - margins.right}

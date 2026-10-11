@@ -9,6 +9,11 @@ import {
   QuoteNode,
 } from "@lexical/rich-text";
 import { $copyBlockFormatIndent } from "@lexical/selection";
+import {
+  $isTableCellNode,
+  TableCellHeaderStates,
+  TableCellNode,
+} from "@lexical/table";
 import { $findMatchingParent, mergeRegister } from "@lexical/utils";
 import {
   $createParagraphNode,
@@ -518,7 +523,16 @@ export function useStyledBlocks() {
           const typed = getStyleObjectFromCSS(
             node.isEmpty() ? node.getTextStyle() : ""
           );
-          const alone = $isParagraphNode(node) || $isHeadingNode(node);
+          // A paragraph in a table cell has no space around it of its own.
+          const alone =
+            ($isParagraphNode(node) || $isHeadingNode(node)) &&
+            !$isTableCellNode(node.getParent());
+
+          const cell = node.getParent();
+          // The cells of a header row are bold.
+          const heading =
+            $isTableCellNode(cell) &&
+            cell.getHeaderStyles() !== TableCellHeaderStates.NO_STATUS;
 
           for (const property of FORMAT_PROPERTIES) {
             // A quote is muted whatever its text style.
@@ -527,7 +541,11 @@ export function useStyledBlocks() {
                 ? ""
                 : `var(--${style.tag}-${property})`;
 
-            element.style.setProperty(property, typed[property] ?? own);
+            element.style.setProperty(
+              property,
+              typed[property] ??
+                (heading && property === "font-weight" ? "600" : own)
+            );
           }
 
           for (const [property, value] of Object.entries(style.layout)) {
@@ -572,6 +590,19 @@ export function useStyledBlocks() {
         )
       );
     const dressBlocks: MutationListener = (mutations) => dress(mutations.keys());
+    // A cell that becomes a header changes how the paragraphs in it look.
+    const dressCells: MutationListener = (mutations) =>
+      dress(
+        editor.getEditorState().read(() =>
+          [...mutations.keys()].flatMap((key) => {
+            const cell = $getNodeByKey(key);
+
+            return $isTableCellNode(cell)
+              ? cell.getChildren().map((child) => child.getKey())
+              : [];
+          })
+        )
+      );
 
     // Lexical carries a text style over a new line only when the kind of block
     // says it, as a heading does. A title is a paragraph that was told, so the
@@ -624,7 +655,11 @@ export function useStyledBlocks() {
         ? $blockOf(selection.anchor.getNode())
         : null;
 
-      if (!($isRangeSelection(selection) && block)) {
+      // In a table Tab moves from cell to cell, which the table takes care of.
+      if (
+        !($isRangeSelection(selection) && block) ||
+        $isTableCellNode(block.getParent())
+      ) {
         return false;
       }
 
@@ -670,7 +705,11 @@ export function useStyledBlocks() {
         : null;
 
       if (
-        !($isRangeSelection(selection) && block && $atBlockStart(selection, block)) ||
+        !(
+          $isRangeSelection(selection) &&
+          block &&
+          $atBlockStart(selection, block)
+        ) ||
         !$getState(block, firstLineState)
       ) {
         return false;
@@ -695,6 +734,7 @@ export function useStyledBlocks() {
         editor.registerMutationListener(kind, dressBlocks)
       ),
       editor.registerMutationListener(TextNode, dressBullets),
+      editor.registerMutationListener(TableCellNode, dressCells),
       editor.registerCommand(
         INSERT_PARAGRAPH_COMMAND,
         split,
