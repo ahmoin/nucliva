@@ -10,9 +10,15 @@ import {
   MinusIcon,
   PlusIcon,
   QuotesIcon,
+  RulerIcon,
   SparkleIcon,
+  TextAlignCenterIcon,
+  TextAlignJustifyIcon,
+  TextAlignLeftIcon,
+  TextAlignRightIcon,
   TextBIcon,
   TextItalicIcon,
+  type Icon,
 } from "@phosphor-icons/react";
 import { $isCodeNode, CodeNode } from "@lexical/code";
 import { LinkNode } from "@lexical/link";
@@ -34,6 +40,7 @@ import { ListPlugin } from "@lexical/react/LexicalListPlugin";
 import { MarkdownShortcutPlugin } from "@lexical/react/LexicalMarkdownShortcutPlugin";
 import { OnChangePlugin } from "@lexical/react/LexicalOnChangePlugin";
 import { RichTextPlugin } from "@lexical/react/LexicalRichTextPlugin";
+import { TabIndentationPlugin } from "@lexical/react/LexicalTabIndentationPlugin";
 import {
   $createQuoteNode,
   $isQuoteNode,
@@ -72,6 +79,7 @@ import {
   $setState,
   type EditorState,
   type ElementNode,
+  FORMAT_ELEMENT_COMMAND,
   FORMAT_TEXT_COMMAND,
   getStyleObjectFromCSS,
   REDO_COMMAND,
@@ -86,6 +94,7 @@ import {
   AutocompletePlugin,
 } from "@/components/document-autocomplete";
 import { DocumentPages, PAGE_WIDTH } from "@/components/document-pages";
+import { Ruler } from "@/components/document-ruler";
 import {
   $blockOf,
   $selectedBlocks,
@@ -111,6 +120,22 @@ const menuButtonClass =
 // in the brand colour: the hover shade alone would look the same on and off
 // with the pointer still over it.
 const toggleClass = "px-0 aria-pressed:bg-primary/15 aria-pressed:text-primary";
+
+type Alignment = "center" | "justify" | "left" | "right";
+
+const alignmentIcons: Record<Alignment, Icon> = {
+  center: TextAlignCenterIcon,
+  justify: TextAlignJustifyIcon,
+  left: TextAlignLeftIcon,
+  right: TextAlignRightIcon,
+};
+
+const alignments: { label: string; value: Alignment }[] = [
+  { label: "Align left", value: "left" },
+  { label: "Align center", value: "center" },
+  { label: "Align right", value: "right" },
+  { label: "Justify", value: "justify" },
+];
 
 // Blocks that are not a text style but still get named on the style button.
 // Anything else counts as normal text.
@@ -266,8 +291,10 @@ const theme = {
   list: {
     // The bullet takes the look of the first character, from variables the
     // item is given as it is drawn. Without them it follows the item.
+    // An item that only holds a nested list has no bullet of its own.
+    nested: { listitem: "list-none" },
     listitem:
-      "my-1 marker:font-(--marker-font-weight) marker:font-(family-name:--marker-font-family) marker:text-(--marker-color) marker:text-(length:--marker-font-size)",
+      "my-1marker:font-(--marker-font-weight) marker:font-(family-name:--marker-font-family) marker:text-(--marker-color) marker:text-(length:--marker-font-size)",
     ol: "my-3 list-decimal pl-7",
     ul: "my-3 list-disc pl-7",
   },
@@ -330,6 +357,7 @@ function Toolbar() {
   const [textStyle, setTextStyle] = useState("paragraph");
   const [bulleted, setBulleted] = useState(false);
   const [quoted, setQuoted] = useState(false);
+  const [align, setAlign] = useState<Alignment>("left");
   const [styleMenuOpen, setStyleMenuOpen] = useState(false);
   const [fontMenuOpen, setFontMenuOpen] = useState(false);
   // Ahead of the reading below, which needs the page to show the current styles.
@@ -367,6 +395,13 @@ function Toolbar() {
       // A button is lit when everything selected is what it makes.
       setBulleted(blocks.length > 0 && blocks.every($isBullet));
       setQuoted(blocks.length > 0 && blocks.every($isQuoteNode));
+      // Text with no alignment, or one that follows the writing direction, sits
+      // on the left.
+      const format = block?.getFormatType();
+
+      setAlign(
+        alignments.find((item) => item.value === format)?.value ?? "left"
+      );
       setFont(fontName(valueOf("font-family", families[name] ?? name)) || null);
       setFontSize(
         Number.parseFloat(valueOf("font-size", inherited.fontSize)) || null
@@ -569,6 +604,16 @@ function Toolbar() {
     () => editor.dispatchCommand(FORMAT_TEXT_COMMAND, "italic"),
     [editor]
   );
+  const pickAlign = useCallback(
+    (event: React.MouseEvent<HTMLElement>) => {
+      const { align: picked } = event.currentTarget.dataset;
+
+      if (picked) {
+        editor.dispatchCommand(FORMAT_ELEMENT_COMMAND, picked as Alignment);
+      }
+    },
+    [editor]
+  );
   // Bullets and quotes are kinds of block, and the text style is kept apart
   // from the kind. A heading made a bullet stays a heading, and is one again
   // once it stops being a bullet.
@@ -694,6 +739,8 @@ function Toolbar() {
     () => editor.update(() => $setState($getRoot(), stylesState, {})),
     [editor]
   );
+
+  const AlignIcon = alignmentIcons[align];
 
   const swatch = (value: string) => (
     <DropdownMenuItem
@@ -941,6 +988,41 @@ function Toolbar() {
         className="mx-1 h-5 data-vertical:self-auto"
         orientation="vertical"
       />
+      <DropdownMenu>
+        <DropdownMenuTrigger
+          render={
+            <Button
+              aria-label="Alignment"
+              className="gap-0.5 px-2"
+              size="icon-sm"
+              variant="ghost"
+            />
+          }
+        >
+          <AlignIcon />
+          <CaretDownIcon className="size-2.5 text-muted-foreground" />
+        </DropdownMenuTrigger>
+        <DropdownMenuContent className="w-auto min-w-0" finalFocus={focusEditor}>
+          <div className="flex gap-1">
+            {alignments.map(({ label, value }) => {
+              const ItemIcon = alignmentIcons[value];
+
+              return (
+              <DropdownMenuItem
+                aria-label={label}
+                className="size-8 justify-center p-0 data-[current=true]:bg-primary/15 data-[current=true]:text-primary"
+                data-align={value}
+                data-current={value === align}
+                key={value}
+                onClick={pickAlign}
+              >
+                <ItemIcon />
+              </DropdownMenuItem>
+              );
+            })}
+          </div>
+        </DropdownMenuContent>
+      </DropdownMenu>
       <Toggle
         aria-label="Bulleted list"
         className={toggleClass}
@@ -1120,6 +1202,7 @@ function DocumentSurface({
   const [status, setStatus] = useState<SaveStatus>("saved");
   const [zoom, setZoom] = useState<number | null>(null);
   const [fit, setFit] = useState(1);
+  const [showRuler, setShowRuler] = useState(true);
   const canvasRef = useRef<HTMLDivElement>(null);
   const scale = zoom === null ? fit : zoom / 100;
   const pending = useRef<Record<string, unknown>>({});
@@ -1216,6 +1299,8 @@ function DocumentSurface({
     return () => observer.disconnect();
   }, []);
 
+  const hideRuler = useCallback(() => setShowRuler(false), []);
+
   const pickZoom = useCallback(
     (value: number | "fit") => setZoom(value === "fit" ? null : value),
     []
@@ -1250,6 +1335,15 @@ function DocumentSurface({
                 />
                 <Toolbar />
                 <div className="flex shrink-0 items-center border bg-card p-1">
+                  <Toggle
+                    aria-label="Ruler"
+                    className={toggleClass}
+                    onPressedChange={setShowRuler}
+                    pressed={showRuler}
+                    size="sm"
+                  >
+                    <RulerIcon />
+                  </Toggle>
                   <DropdownMenu>
                     <DropdownMenuTrigger
                       render={
@@ -1299,6 +1393,7 @@ function DocumentSurface({
             )
           : null}
         <div className="overflow-auto" ref={canvasRef}>
+          {showRuler ? <Ruler onHide={hideRuler} scale={scale} /> : null}
           <RichTextPlugin
             contentEditable={<DocumentPages scale={scale} />}
             ErrorBoundary={LexicalErrorBoundary}
@@ -1310,6 +1405,7 @@ function DocumentSurface({
         </div>
         <HistoryPlugin />
         <AutocompletePlugin />
+        <TabIndentationPlugin />
         <ListPlugin />
         <LinkPlugin />
         <MarkdownShortcutPlugin transformers={TRANSFORMERS} />

@@ -25,9 +25,14 @@ import {
   createState,
   type ElementNode,
   getStyleObjectFromCSS,
+  INDENT_CONTENT_COMMAND,
   INSERT_PARAGRAPH_COMMAND,
+  INSERT_TAB_COMMAND,
+  KEY_BACKSPACE_COMMAND,
+  KEY_TAB_COMMAND,
   type LexicalNode,
   type MutationListener,
+  OUTDENT_CONTENT_COMMAND,
   ParagraphNode,
   type RangeSelection,
   TextNode,
@@ -62,6 +67,53 @@ export const $setStyle = <Block extends ElementNode>(
   block: Block,
   tag: string
 ) => $setState(block, styleState, tag === "paragraph" ? undefined : tag);
+
+// How far the first line of a paragraph is moved in, in pixels. Tab at the start
+// of a paragraph moves it half an inch, which is also how wide a tab is.
+export const FIRST_LINE_STEP = 48;
+
+export const firstLineState = createState("firstLine", {
+  parse: (value) => (typeof value === "number" && value > 0 ? value : 0),
+});
+
+// Where a tab in a paragraph stops, measured from the left margin in pixels.
+// Text after a tab starts at a left stop, is centred on a centre stop and ends
+// at a right stop.
+export const TAB_STOP_TYPES = ["left", "center", "right"] as const;
+
+export interface TabStop {
+  type: (typeof TAB_STOP_TYPES)[number];
+  x: number;
+}
+
+export const tabStopsState = createState("tabStops", {
+  parse: (value): TabStop[] =>
+    Array.isArray(value)
+      ? value.filter(
+          (stop): stop is TabStop =>
+            TAB_STOP_TYPES.includes(stop?.type) && typeof stop.x === "number"
+        )
+      : [],
+});
+
+// The space between the sides of the page and the text, in pixels.
+export const DEFAULT_MARGIN = 96;
+
+export interface Margins {
+  left: number;
+  right: number;
+}
+
+export const marginsState = createState("margins", {
+  parse: (value): Margins => {
+    const margins = (value ?? {}) as Partial<Margins>;
+
+    return {
+      left: typeof margins.left === "number" ? margins.left : DEFAULT_MARGIN,
+      right: typeof margins.right === "number" ? margins.right : DEFAULT_MARGIN,
+    };
+  },
+});
 
 interface TextStyle {
   // The block its text is in when that is neither a bullet nor a quote.
@@ -202,6 +254,18 @@ export const $styleOf = (block: ElementNode | null) =>
   (block && $getState(block, styleState)) ??
   ($isHeadingNode(block) ? block.getTag() : "paragraph");
 
+// Whether the caret is at the very start of a block.
+const $atBlockStart = (selection: RangeSelection, block: ElementNode) => {
+  const { anchor } = selection;
+
+  return (
+    selection.isCollapsed() &&
+    anchor.offset === 0 &&
+    (anchor.getNode().is(block) ||
+      anchor.getNode().is(block.getFirstDescendant()))
+  );
+};
+
 // The blocks a selection touches, in the order they come in the document.
 export const $selectedBlocks = (selection: RangeSelection) =>
   new Set(
@@ -233,6 +297,8 @@ export function $swapBlocks(swap: (block: ElementNode) => ElementNode | null) {
     }
 
     $copyBlockFormatIndent(block, next);
+    $setState(next, firstLineState, $getState(block, firstLineState));
+    $setState(next, tabStopsState, $getState(block, tabStopsState));
     block.replace(next, true);
 
     for (const point of [kept.anchor, kept.focus]) {
@@ -292,6 +358,140 @@ export function useTextStyles() {
   return custom;
 }
 
+// The page margins of the document, kept current as they are dragged.
+export function useMargins() {
+  const [editor] = useLexicalComposerContext();
+  const [margins, setMargins] = useState<Margins>({
+    left: DEFAULT_MARGIN,
+    right: DEFAULT_MARGIN,
+  });
+
+  // Before paint, so a page is never drawn with the margins of the one before.
+  useLayoutEffect(() => {
+    const read = () => {
+      const next = $getState($getRoot(), marginsState);
+
+      setMargins((current) =>
+        current.left === next.left && current.right === next.right
+          ? current
+          : next
+      );
+    };
+
+    editor.getEditorState().read(read);
+
+    return editor.registerUpdateListener(({ editorState }) =>
+      editorState.read(read)
+    );
+  }, [editor]);
+
+  return margins;
+}
+
+const tabsIn = (element: HTMLElement) =>
+  [...element.querySelectorAll("span")].filter(
+    (span) => span.textContent === "\t"
+  );
+
+function clearTabs(element: HTMLElement) {
+  for (const tab of tabsIn(element)) {
+    tab.style.display = "";
+    tab.style.width = "";
+  }
+}
+
+// Gives each tab in a paragraph the width that takes the text after it to the
+// next stop: the left edge of the text to a left stop, its right edge to a
+// right one. A tab past the last stop keeps the width of a plain tab.
+function fitTabs(element: HTMLElement, stops: TabStop[]) {
+  const tabs = tabsIn(element);
+
+  clearTabs(element);
+
+  const box = element.getBoundingClientRect();
+  // The page is scaled, and measurements come back in what is on the screen.
+  const scale = box.width / element.offsetWidth || 1;
+
+  tabs.forEach((tab, index) => {
+    const start = (tab.getBoundingClientRect().left - box.left) / scale;
+    const stop = stops
+      .filter((candidate) => candidate.x > start + 1)
+      .sort((a, b) => a.x - b.x)[0];
+
+    if (!stop) {
+      return;
+    }
+
+    let width = stop.x - start;
+
+    if (stop.type !== "left") {
+      const after = document.createRange();
+      const next = tabs[index + 1];
+
+      after.setStartAfter(tab);
+
+      if (next) {
+        after.setEndBefore(next);
+      } else {
+        after.selectNodeContents(element);
+        after.setStartAfter(tab);
+      }
+
+      // The text ends at a right stop and is centred on a centre one.
+      const text = after.getBoundingClientRect().width / scale;
+
+      width = Math.max(0, width - (stop.type === "center" ? text / 2 : text));
+    }
+
+    tab.style.display = "inline-block";
+    tab.style.width = `${width}px`;
+  });
+}
+
+// Keeps the tabs of paragraphs that have tab stops lined up with them.
+export function useTabStops() {
+  const [editor] = useLexicalComposerContext();
+
+  useLayoutEffect(() => {
+    let fitted = new Set<HTMLElement>();
+
+    const fit = () => {
+      const found = editor.getEditorState().read(() => {
+        const blocks: [HTMLElement, TabStop[]][] = [];
+
+        for (const node of $getRoot().getChildren()) {
+          const stops = $isTextBlock(node) ? $getState(node, tabStopsState) : [];
+          const element = editor.getElementByKey(node.getKey());
+
+          if (stops.length > 0 && element) {
+            blocks.push([element, stops]);
+          }
+        }
+
+        return blocks;
+      });
+      const next = new Set(found.map(([element]) => element));
+
+      // A paragraph that lost its stops goes back to plain tabs.
+      for (const element of fitted) {
+        if (!next.has(element)) {
+          clearTabs(element);
+        }
+      }
+
+      fitted = next;
+
+      for (const [element, stops] of found) {
+        fitTabs(element, stops);
+      }
+    };
+
+    fit();
+
+    return editor.registerUpdateListener(fit);
+  }, [editor]);
+}
+
 // Makes the blocks on the page follow their text styles.
 export function useStyledBlocks() {
   const [editor] = useLexicalComposerContext();
@@ -335,6 +535,10 @@ export function useStyledBlocks() {
           }
 
           element.style.setProperty("margin", alone ? style.margin : "");
+
+          const indent = $getState(node, firstLineState);
+
+          element.style.setProperty("text-indent", indent ? `${indent}px` : "");
 
           if ($isListItemNode(node)) {
             // A bullet looks like the first character of its item.
@@ -380,15 +584,24 @@ export function useStyledBlocks() {
           ? $blockOf(selection.anchor.getNode())
           : null;
       const tag = $styleOf(block);
+      const indent = block ? $getState(block, firstLineState) : 0;
+      const stops = block ? $getState(block, tabStopsState) : [];
 
       if (
         !($isRangeSelection(selection) && $isParagraphNode(block)) ||
-        tag === "paragraph"
+        (tag === "paragraph" && !indent && stops.length === 0)
       ) {
         return false;
       }
 
       const next = selection.insertParagraph();
+
+      // The next paragraph starts as indented as this one, with the same tab
+      // stops.
+      if (next) {
+        $setState(next, firstLineState, indent);
+        $setState(next, tabStopsState, stops);
+      }
 
       if (next && !next.isEmpty()) {
         $setStyle(next, tag);
@@ -401,7 +614,83 @@ export function useStyledBlocks() {
       return true;
     };
 
+    // Tab nests a bullet wherever the caret is in it, as it does in other
+    // editors. At the start of any other block it moves the first line in by
+    // half an inch, and Shift+Tab moves it back. Anywhere else it is a tab
+    // character, which Lexical's own handling of Tab takes care of.
+    const tab = (event: KeyboardEvent) => {
+      const selection = $getSelection();
+      const block = $isRangeSelection(selection)
+        ? $blockOf(selection.anchor.getNode())
+        : null;
+
+      if (!($isRangeSelection(selection) && block)) {
+        return false;
+      }
+
+      if ($isListItemNode(block)) {
+        event.preventDefault();
+
+        return editor.dispatchCommand(
+          event.shiftKey ? OUTDENT_CONTENT_COMMAND : INDENT_CONTENT_COMMAND,
+          undefined
+        );
+      }
+
+      if ($isCodeNode(block)) {
+        return false;
+      }
+
+      // With tab stops, Tab is a tab character wherever the caret is, and the
+      // stops decide how far it goes.
+      if ($getState(block, tabStopsState).length > 0 && !event.shiftKey) {
+        event.preventDefault();
+
+        return editor.dispatchCommand(INSERT_TAB_COMMAND, undefined);
+      }
+
+      if (!$atBlockStart(selection, block)) {
+        return false;
+      }
+
+      event.preventDefault();
+      $setState(block, firstLineState, (indent) =>
+        Math.max(0, indent + (event.shiftKey ? -FIRST_LINE_STEP : FIRST_LINE_STEP))
+      );
+
+      return true;
+    };
+
+    // Backspace at the start of an indented paragraph takes the indent back
+    // before it joins the paragraph above.
+    const backspace = (event: KeyboardEvent) => {
+      const selection = $getSelection();
+      const block = $isRangeSelection(selection)
+        ? $blockOf(selection.anchor.getNode())
+        : null;
+
+      if (
+        !($isRangeSelection(selection) && block && $atBlockStart(selection, block)) ||
+        !$getState(block, firstLineState)
+      ) {
+        return false;
+      }
+
+      event.preventDefault();
+      $setState(block, firstLineState, (indent) =>
+        Math.max(0, indent - FIRST_LINE_STEP)
+      );
+
+      return true;
+    };
+
     return mergeRegister(
+      editor.registerCommand(KEY_TAB_COMMAND, tab, COMMAND_PRIORITY_LOW),
+      editor.registerCommand(
+        KEY_BACKSPACE_COMMAND,
+        backspace,
+        COMMAND_PRIORITY_LOW
+      ),
       ...[ParagraphNode, HeadingNode, QuoteNode, ListItemNode].map((kind) =>
         editor.registerMutationListener(kind, dressBlocks)
       ),

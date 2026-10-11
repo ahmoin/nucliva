@@ -10,10 +10,16 @@ import {
   getStyleObjectFromCSS,
 } from "lexical";
 import { Fragment, useEffect, useLayoutEffect, useRef, useState } from "react";
-import { useStyledBlocks, useTextStyles } from "@/components/document-styles";
+import {
+  type Margins,
+  useMargins,
+  useStyledBlocks,
+  useTabStops,
+  useTextStyles,
+} from "@/components/document-styles";
 
 export const PAGE_WIDTH = 816;
-const PAGE_HEIGHT = 1056;
+export const PAGE_HEIGHT = 1056;
 const PAGE_MARGIN = 96;
 const PAGE_GAP = 24;
 const PAGE_PITCH = PAGE_HEIGHT + PAGE_GAP;
@@ -22,9 +28,8 @@ const BREAK_HEIGHT = 2 * PAGE_MARGIN + PAGE_GAP;
 
 // The bottom padding keeps the rest of the last page clickable. It is a whole
 // page tall so it always reaches the end of the page, and the rest is clipped.
-const contentStyle = {
-  padding: `${PAGE_MARGIN}px ${PAGE_MARGIN}px ${PAGE_PITCH}px`,
-};
+const contentPadding = ({ left, right }: Margins) =>
+  `${PAGE_MARGIN}px ${right}px ${PAGE_PITCH}px ${left}px`;
 
 const FONT_PROPERTIES = ["font-family", "font-size", "font-weight"];
 
@@ -105,6 +110,8 @@ export function DocumentPages({ scale }: { scale: number }) {
   // Before the page count below, which depends on how big the text is.
   useTextStyles();
   useStyledBlocks();
+  const margins = useMargins();
+  useTabStops();
 
   // Inside text the browser draws the caret in the font of that text, even
   // when the next character will be typed in another one. A caret of our own
@@ -240,10 +247,10 @@ export function DocumentPages({ scale }: { scale: number }) {
         <ContentEditable
           aria-label="Document"
           className={cn(
-            "peer font-(--paragraph-font-weight) font-(family-name:--paragraph-font-family) text-(--paragraph-color) text-(length:--paragraph-font-size) outline-none **:has-[>br:only-child]:w-full **:has-[>br:only-child]:contain-layout",
+            "peer font-(--paragraph-font-weight) font-(family-name:--paragraph-font-family) text-(--paragraph-color) text-(length:--paragraph-font-size) outline-none [tab-size:48px] **:has-[>br:only-child]:w-full **:has-[>br:only-child]:contain-layout",
             caret && "caret-transparent"
           )}
-          style={contentStyle}
+          style={{ padding: contentPadding(margins) }}
         />
         {caret ? (
           <div

@@ -23,7 +23,8 @@ export function AppShell({
   return (
     <SidebarProvider>
       <AppSidebar />
-      <SidebarInset>
+      {/* A flex item will not shrink below the width of its content unless it is told it may. Without min-w-0 here, a wide toolbar makes the whole page wider than the screen instead of scrolling inside the header. */}
+      <SidebarInset className="min-w-0">
         <header className="sticky top-0 z-20 flex h-16 shrink-0 items-center gap-2 border-b bg-background px-4">
           <SidebarTrigger className="-ml-1" />
           <Separator
@@ -42,7 +43,7 @@ export function AppShell({
             id="header-slot"
           />
         </header>
-        <div className="flex flex-1 flex-col gap-4 p-4">{children}</div>
+        <div className="flex min-w-0 flex-1 flex-col gap-4 p-4">{children}</div>
       </SidebarInset>
       <Omnibar />
     </SidebarProvider>

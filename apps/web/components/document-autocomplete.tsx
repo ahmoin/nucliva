@@ -13,7 +13,7 @@ import {
   $isRangeSelection,
   $isTextNode,
   $setSelection,
-  COMMAND_PRIORITY_LOW,
+  COMMAND_PRIORITY_NORMAL,
   DecoratorNode,
   type EditorConfig,
   KEY_ARROW_RIGHT_COMMAND,
@@ -337,11 +337,12 @@ export function AutocompletePlugin() {
         }
       }),
       editor.registerUpdateListener(handleUpdate),
-      editor.registerCommand(KEY_TAB_COMMAND, accept, COMMAND_PRIORITY_LOW),
+      // Above the other handlers of Tab, so a suggestion is taken first.
+      editor.registerCommand(KEY_TAB_COMMAND, accept, COMMAND_PRIORITY_NORMAL),
       editor.registerCommand(
         KEY_ARROW_RIGHT_COMMAND,
         accept,
-        COMMAND_PRIORITY_LOW
+        COMMAND_PRIORITY_NORMAL
       ),
       cancel
     );
