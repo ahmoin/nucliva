@@ -1,5 +1,9 @@
 # Nucliva
 
+### [nucliva.com](https://nucliva.com)
+
+![Nucliva, the AI workspace that writes like you](apps/web/app/opengraph-image.png)
+
 An AI writing workspace that writes in your voice. Docs, slides and sheets in one place, with an assistant that researches the web, drafts, and shows every change as a suggestion you accept or reject.
 
 > **Work in progress.** Nucliva is being built for the Nebius x NVIDIA Global AI Hackathon (deadline 30 Oct 2026). Things move fast, some parts are rough, and this README will grow with the project. If something here does not match what you see, the code is right and the README is behind.
@@ -22,8 +26,6 @@ An AI writing workspace that writes in your voice. Docs, slides and sheets in on
 - GitHub sign in is in the code but has no live credentials or button.
 - Mobile layouts for the editor are rough.
 - Tests. There are none yet.
-
-The running checklist lives in `TASK.md`.
 
 ## Built with
 
@@ -66,6 +68,8 @@ Fill in `apps/web/.env.local`:
 | `TAVILY_API_KEY` | a Tavily key |
 | `LANGSMITH_*` | LangSmith tracing (optional) |
 
+In production (nucliva.com), set `BETTER_AUTH_URL` and `NEXT_PUBLIC_APP_URL` to `https://nucliva.com`, and add `https://nucliva.com/api/auth/callback/google` as an authorised redirect URI in the Google console.
+
 Set up the database, then start the app:
 
 ```bash
@@ -88,7 +92,7 @@ pnpm db:studio    # browse the database
 
 ## Try it
 
-There will be no shared demo login. Instead, every page under `/solutions` (for example `/solutions/founders/investor-updates`) will open a ready-made sandbox workspace for that solution, with sample documents, style and sources already loaded, so you can try it without signing up. This is planned and not built yet. For now those pages show the prompt and a preview, and "Try it free" goes to sign up. A live link will go here once Nucliva is deployed.
+There will be no shared demo login. Instead, every page under `/solutions` (for example `/solutions/founders/investor-updates`) will open a ready-made sandbox workspace for that solution, with sample documents, style and sources already loaded, so you can try it without signing up. This is planned and not built yet. For now those pages show the prompt and a preview, and "Try it free" goes to sign up. Once it is deployed, you will find it at [nucliva.com](https://nucliva.com).
 
 ## Roadmap
 

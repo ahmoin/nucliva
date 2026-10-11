@@ -24,13 +24,24 @@ const fontMono = Geist_Mono({
   variable: "--font-mono",
 });
 
+const description =
+  "Nucliva is the AI writing workspace that learns your voice, researches the web and drafts docs, slides and sheets that sound like you.";
+
 export const metadata: Metadata = {
-  description:
-    "Nucliva is the AI writing workspace that learns your voice, researches the web and drafts docs, slides and sheets that sound like you.",
+  description,
+  // Relative URLs, like the share image, are resolved against this.
+  metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL || "https://nucliva.com"),
+  openGraph: {
+    description,
+    siteName: "Nucliva",
+    title: "Nucliva",
+    type: "website",
+  },
   title: {
     default: "Nucliva",
     template: "%s | Nucliva",
   },
+  twitter: { card: "summary_large_image" },
 };
 
 export default function RootLayout({
