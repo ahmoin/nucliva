@@ -83,7 +83,10 @@ export function endOf(chat: Chat, id: string) {
   let current = id;
 
   for (;;) {
-    const next = chat.messages.findLast((message) => message.parent === current);
+    // The newest message that answers this one comes last in the list.
+    const next = chat.messages
+      .filter((message) => message.parent === current)
+      .at(-1);
 
     if (!next) {
       return current;
