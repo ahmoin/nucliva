@@ -8,6 +8,7 @@ import {
 import "@workspace/ui/globals.css";
 import { cn } from "@workspace/ui/lib/utils";
 import { ThemeProvider } from "@/components/theme-provider";
+import { siteUrl } from "@/lib/site";
 
 const instrumentSans = Instrument_Sans({
   subsets: ["latin"],
@@ -30,7 +31,7 @@ const description =
 export const metadata: Metadata = {
   description,
   // Relative URLs, like the share image, are resolved against this.
-  metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL || "https://nucliva.com"),
+  metadataBase: new URL(siteUrl),
   openGraph: {
     description,
     siteName: "Nucliva",

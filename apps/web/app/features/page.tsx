@@ -18,6 +18,7 @@ import { Hotkeys } from "@/components/hotkeys";
 import { Reveal } from "@/components/reveal";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader, siteHotkeys } from "@/components/site-header";
+import { features } from "@/lib/features";
 
 export const metadata: Metadata = {
   description:
@@ -28,61 +29,17 @@ export const metadata: Metadata = {
 const enter =
   "motion-safe:fade-in motion-safe:slide-in-from-bottom-4 motion-safe:animate-in motion-safe:fill-mode-both motion-safe:duration-700 motion-safe:ease-out";
 
-const features = [
-  {
-    description:
-      "Paste emails, essays or reports you have written. Nucliva maps your tone, rhythm and word choice, and every draft after that is written to match.",
-    icon: MicrophoneStageIcon,
-    title: "It learns your voice",
-  },
-  {
-    description:
-      "Ask it to research something and it searches the live web, shows each step as it goes, and lists the sources it used. Citations appear when you ask for them.",
-    icon: GlobeIcon,
-    title: "Research with sources",
-  },
-  {
-    description:
-      "Every change lands in your document as green and red, down to a single word. Accept or reject each one, or all at once, and undo whatever you like.",
-    icon: PencilSimpleLineIcon,
-    title: "Suggestions, not rewrites",
-  },
-  {
-    description:
-      "A chat for each document that keeps its history. Go back to an earlier message, edit it, branch from it, copy it, or clear it and start again.",
-    icon: ChatsCircleIcon,
-    title: "A chat that remembers",
-  },
-  {
-    description:
-      "Ghost text appears as you type, in your own style. Press Tab to take it, or keep typing to ignore it.",
-    icon: KeyboardIcon,
-    title: "Inline autocomplete",
-  },
-  {
-    description:
-      "Real pages with styles, lists, quotes and tables, alignment and indents, a ruler with margins and tab stops, and zoom. It feels like a word processor, because it is one.",
-    icon: RulerIcon,
-    title: "A proper page editor",
-  },
-  {
-    description:
-      "Documents, slides and sheets live in one workspace, so you stop copying between tools. Slides and sheets are early, and getting better.",
-    icon: FileTextIcon,
-    title: "Docs, slides and sheets",
-  },
-  {
-    description:
-      "Add the places your knowledge lives and Nucliva indexes them, so drafts can draw on your own notes and past work, not only the web.",
-    icon: DatabaseIcon,
-    title: "A knowledge base",
-  },
-  {
-    description:
-      "Twenty-four ready-made starting points, from investor updates to study guides. Each opens a sandbox with notes and a request already set up, no sign up needed.",
-    icon: SquaresFourIcon,
-    title: "A library of solutions",
-  },
+// The icon for each feature in lib/features.ts, in the same order.
+const icons = [
+  MicrophoneStageIcon,
+  GlobeIcon,
+  PencilSimpleLineIcon,
+  ChatsCircleIcon,
+  KeyboardIcon,
+  RulerIcon,
+  FileTextIcon,
+  DatabaseIcon,
+  SquaresFourIcon,
 ];
 
 export default function FeaturesPage() {
@@ -245,17 +202,24 @@ export default function FeaturesPage() {
               className="grid gap-px border bg-border sm:grid-cols-2 lg:grid-cols-3"
               data-reveal
             >
-              {features.map(({ description, icon: Icon, title }) => (
-                <li className="flex flex-col gap-3 bg-background p-6" key={title}>
-                  <Icon className="size-6 text-primary" />
-                  <h3 className="font-semibold text-lg tracking-tight">
-                    {title}
-                  </h3>
-                  <p className="text-muted-foreground text-sm leading-relaxed">
-                    {description}
-                  </p>
-                </li>
-              ))}
+              {features.map(({ description, title }, index) => {
+                const Icon = icons[index] ?? SquaresFourIcon;
+
+                return (
+                  <li
+                    className="flex flex-col gap-3 bg-background p-6"
+                    key={title}
+                  >
+                    <Icon className="size-6 text-primary" />
+                    <h3 className="font-semibold text-lg tracking-tight">
+                      {title}
+                    </h3>
+                    <p className="text-muted-foreground text-sm leading-relaxed">
+                      {description}
+                    </p>
+                  </li>
+                );
+              })}
             </ul>
           </Reveal>
         </section>

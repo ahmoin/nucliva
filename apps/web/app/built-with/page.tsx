@@ -7,6 +7,7 @@ import { type Partner, PartnerLogo } from "@/components/partner-logo";
 import { Reveal } from "@/components/reveal";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader, siteHotkeys } from "@/components/site-header";
+import { models, partners } from "@/lib/built-with";
 import { repoUrl } from "@/lib/site";
 
 export const metadata: Metadata = {
@@ -18,67 +19,37 @@ export const metadata: Metadata = {
 const enter =
   "motion-safe:fade-in motion-safe:slide-in-from-bottom-4 motion-safe:animate-in motion-safe:fill-mode-both motion-safe:duration-700 motion-safe:ease-out";
 
-const partners: (Partner & { description: string; role: string })[] = [
-  {
-    darkLogo: "/logos/nebius.svg",
-    description:
-      "Every model call goes through Nebius Token Factory's OpenAI compatible API, and so does the embedding model that makes your writing searchable.",
-    height: 36,
-    lightLogo: "/logos/nebius.svg",
-    name: "Nebius Token Factory",
-    role: "Runs the models",
-    width: 131,
-  },
-  {
-    darkLogo: "/logos/nvidia-dark.svg",
-    description:
-      "Three Nemotron models share the work: Ultra for drafts and edits, Super for reading your tone, and Nano for fast autocomplete.",
-    height: 180,
-    lightLogo: "/logos/nvidia.svg",
-    name: "NVIDIA Nemotron",
-    role: "The models",
-    width: 975,
-  },
-  {
-    darkLogo: "/logos/tavily-dark.svg",
-    description:
-      "When you ask Nucliva to research something, Tavily runs the web search. The results become the sources you see next to the answer.",
-    height: 109,
-    lightLogo: "/logos/tavily.svg",
-    name: "Tavily",
-    role: "Searches the web",
-    width: 362,
-  },
-  {
+// The logo for each partner in lib/built-with.ts, by name.
+const logos: Record<string, Partner> = {
+  LangChain: {
     darkLogo: "/logos/langchain-dark.svg",
-    description:
-      "LangChain connects the pieces: chat models, structured output for edits, text splitting and embeddings, and the search tool.",
     height: 24,
     lightLogo: "/logos/langchain.svg",
     name: "LangChain",
-    role: "Wires it together",
     width: 131,
   },
-];
-
-const models = [
-  {
-    job: "Writes drafts and suggests edits, with reasoning behind each change",
-    name: "Nemotron 3 Ultra",
+  "NVIDIA Nemotron": {
+    darkLogo: "/logos/nvidia-dark.svg",
+    height: 180,
+    lightLogo: "/logos/nvidia.svg",
+    name: "NVIDIA Nemotron",
+    width: 975,
   },
-  {
-    job: "Reads what you have written and describes your tone, rhythm and word choice",
-    name: "Nemotron 3 Super",
+  "Nebius Token Factory": {
+    darkLogo: "/logos/nebius.svg",
+    height: 36,
+    lightLogo: "/logos/nebius.svg",
+    name: "Nebius Token Factory",
+    width: 131,
   },
-  {
-    job: "Finishes your sentence as you type, fast enough to feel instant",
-    name: "Nemotron 3 Nano",
+  Tavily: {
+    darkLogo: "/logos/tavily-dark.svg",
+    height: 109,
+    lightLogo: "/logos/tavily.svg",
+    name: "Tavily",
+    width: 362,
   },
-  {
-    job: "Turns your writing into searchable vectors, so drafts can find what matters",
-    name: "Qwen3 Embedding 8B",
-  },
-];
+};
 
 export default function BuiltWithPage() {
   return (
@@ -114,7 +85,9 @@ export default function BuiltWithPage() {
                   key={partner.name}
                 >
                   <div className="flex h-10 items-center">
-                    <PartnerLogo partner={partner} />
+                    {logos[partner.name] ? (
+                      <PartnerLogo partner={logos[partner.name] as Partner} />
+                    ) : null}
                   </div>
                   <div className="flex flex-col gap-2">
                     <span className="text-primary text-xs uppercase tracking-widest">
