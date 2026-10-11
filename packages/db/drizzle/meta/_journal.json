@@ -15,6 +15,13 @@
       "when": 1790477691326,
       "tag": "0001_early_carmella_unuscione",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1791756321179,
+      "tag": "0002_strong_captain_flint",
+      "breakpoints": true
     }
   ]
 }

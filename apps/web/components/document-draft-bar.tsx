@@ -12,6 +12,7 @@ import {
 } from "@phosphor-icons/react";
 import { Button } from "@workspace/ui/components/button";
 import { Input } from "@workspace/ui/components/input";
+import { useSearchParams } from "next/navigation";
 import {
   useCallback,
   useEffect,
@@ -118,7 +119,9 @@ export function DraftBar({
   const changes = useChanges();
   const [chat, setChat] = useChat(documentId);
   const [open, setOpen] = useState(false);
-  const [prompt, setPrompt] = useState("");
+  // A solution page can send someone here with its request already typed in.
+  const starter = useSearchParams()?.get("prompt") ?? "";
+  const [prompt, setPrompt] = useState(starter);
   const [generating, setGenerating] = useState(false);
   // While the AI works from the web: whether the search is still running, and
   // what it found.
@@ -127,6 +130,14 @@ export function DraftBar({
   const [asking, setAsking] = useState("");
   const [error, setError] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+
+  // With a request waiting, the cursor is ready at the end of it.
+  useEffect(() => {
+    if (starter) {
+      inputRef.current?.focus();
+    }
+  }, [starter]);
+
   const line = useMemo(() => lineOf(chat), [chat]);
   // The next message goes on from the head. When the head has messages after
   // it, that is a branch from an earlier message.

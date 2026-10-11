@@ -92,7 +92,7 @@ pnpm db:studio    # browse the database
 
 ## Try it
 
-There will be no shared demo login. Instead, every page under `/solutions` (for example `/solutions/founders/investor-updates`) will open a ready-made sandbox workspace for that solution, with sample documents, style and sources already loaded, so you can try it without signing up. This is planned and not built yet. For now those pages show the prompt and a preview, and "Try it free" goes to sign up. Once it is deployed, you will find it at [nucliva.com](https://nucliva.com).
+There is no shared demo login. Every page under `/solutions` (for example `/solutions/founders/investor-updates`) has a **Try it now** button that opens a sandbox workspace for that solution, with no sign up. It creates a guest account with a lived-in workspace for that line of work: earlier documents, a slide deck, a sheet, writing samples to match a voice, and a knowledge base of indexed sources. You land in a document of rough notes with the request for that solution already typed in. Press Enter, then accept or reject what comes back. If you sign up afterwards, your work moves to your account. Guests have a small hourly allowance of AI requests. Try it at [nucliva.com](https://nucliva.com).
 
 ## Roadmap
 
@@ -100,7 +100,7 @@ There will be no shared demo login. Instead, every page under `/solutions` (for 
 - Document-to-style drafting from a few bullet points
 - Connectors for Drive, Notion and Slack
 - An architecture diagram and a demo video
-- A sandbox workspace behind every solution page, as the live demo
+- Sandbox notes written for each solution, not just each line of work
 - Tests and a deployment
 
 ## License

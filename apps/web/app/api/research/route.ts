@@ -1,5 +1,6 @@
 import { headers } from "next/headers";
 import { auth } from "@/lib/auth";
+import { limitGuest } from "@/lib/rate-limit";
 import { searchWeb } from "@/lib/tavily";
 
 // The search a research draft is written from. It is its own request so the
@@ -9,6 +10,12 @@ export async function POST(request: Request) {
 
   if (!session) {
     return Response.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const limited = limitGuest(session, "research", 10);
+
+  if (limited) {
+    return limited;
   }
 
   const body = await request.json().catch(() => null);

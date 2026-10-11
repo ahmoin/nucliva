@@ -34,6 +34,13 @@ export default function PrivacyPage() {
           with a password, we store a hash of it, never the password itself.
         </p>
         <p>
+          <strong>Guest accounts.</strong> If you try a solution without
+          signing up, we create a temporary guest account, with no name or
+          email, and put sample notes in it. If you sign up afterwards, what you
+          made moves to your new account. Guest accounts that are never used
+          again may be deleted.
+        </p>
+        <p>
           <strong>Sign in details.</strong> When you sign in we record a session,
           including the IP address and browser details (the user agent) it came
           from, so we can keep you signed in and spot misuse.

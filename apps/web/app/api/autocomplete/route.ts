@@ -1,6 +1,7 @@
 import { headers } from "next/headers";
 import { autocompleteInput, autocompletePrompt } from "@/lib/ai/prompts";
 import { auth } from "@/lib/auth";
+import { limitGuest } from "@/lib/rate-limit";
 import { getChatModel } from "@/lib/nebius";
 
 // The model is asked for {"space", "text"}, and the space is put back in front
@@ -32,6 +33,11 @@ export async function POST(request: Request) {
 
   if (!session) {
     return Response.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  // Autocomplete runs as they type, so a guest gets plenty of it.
+  if (limitGuest(session, "autocomplete", 200)) {
+    return Response.json({ completion: null });
   }
 
   const body = await request.json().catch(() => null);

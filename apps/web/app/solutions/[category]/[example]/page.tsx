@@ -9,6 +9,7 @@ import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader, siteHotkeys } from "@/components/site-header";
 import { kindIcons, SolutionCard } from "@/components/solution-card";
 import { SolutionPreview } from "@/components/solution-preview";
+import { TrySandboxButton } from "@/components/try-sandbox-button";
 import {
   detailOf,
   findCategory,
@@ -113,16 +114,10 @@ export default async function SolutionPage({ params }: Props) {
             >
               {solution.summary}. {category.blurb}
             </p>
-            <div className={`flex flex-wrap gap-3 delay-300 ${enter}`}>
-              <Button
-                className="h-11 px-6"
-                nativeButton={false}
-                render={<Link href="/signup" />}
-                size="lg"
-              >
-                Try it free
-                <ArrowRightIcon />
-              </Button>
+            <div
+              className={`flex flex-wrap items-start gap-3 delay-300 ${enter}`}
+            >
+              <TrySandboxButton category={category.slug} example={solution.slug} />
               <Button
                 className="h-11 px-6"
                 nativeButton={false}

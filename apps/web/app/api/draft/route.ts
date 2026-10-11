@@ -1,5 +1,6 @@
 import { headers } from "next/headers";
 import { auth } from "@/lib/auth";
+import { limitGuest } from "@/lib/rate-limit";
 import { wantsCitations, wantsResearch } from "@/lib/research-intent";
 import { suggestEdits, type Turn } from "@/lib/style-engine";
 import type { Source } from "@/lib/tavily";
@@ -9,6 +10,12 @@ export async function POST(request: Request) {
 
   if (!session) {
     return Response.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const limited = limitGuest(session, "draft", 20);
+
+  if (limited) {
+    return limited;
   }
 
   const body = await request.json().catch(() => null);

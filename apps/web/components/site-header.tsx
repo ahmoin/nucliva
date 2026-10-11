@@ -22,10 +22,10 @@ export function SiteHeader() {
           <Link className="hover:text-foreground" href="/solutions">
             Solutions
           </Link>
-          <Link className="hover:text-foreground" href="/#features">
+          <Link className="hover:text-foreground" href="/features">
             Features
           </Link>
-          <Link className="hover:text-foreground" href="/#built-with">
+          <Link className="hover:text-foreground" href="/built-with">
             Built with
           </Link>
         </nav>

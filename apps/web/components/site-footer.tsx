@@ -23,13 +23,13 @@ export function SiteFooter() {
           </Link>
           <Link
             className="text-muted-foreground hover:underline"
-            href="/#features"
+            href="/features"
           >
             Features
           </Link>
           <Link
             className="text-muted-foreground hover:underline"
-            href="/#built-with"
+            href="/built-with"
           >
             Built with
           </Link>

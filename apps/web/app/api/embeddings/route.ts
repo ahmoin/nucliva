@@ -4,12 +4,19 @@ import { and, eq } from "drizzle-orm";
 import { headers } from "next/headers";
 import { auth } from "@/lib/auth";
 import { ingestText } from "@/lib/embeddings";
+import { limitGuest } from "@/lib/rate-limit";
 
 export async function POST(request: Request) {
   const session = await auth.api.getSession({ headers: await headers() });
 
   if (!session) {
     return Response.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const limited = limitGuest(session, "embeddings", 5);
+
+  if (limited) {
+    return limited;
   }
 
   const body = await request.json().catch(() => null);
