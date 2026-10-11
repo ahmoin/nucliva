@@ -20,6 +20,7 @@ import {
   $getNodeByKey,
   $getRoot,
   $getState,
+  $isElementNode,
   $isTextNode,
   $setState,
   createState,
@@ -491,7 +492,14 @@ function $blockText(block: LexicalNode) {
   if ($isTableNode(block)) {
     return block
       .getChildren()
-      .map((row) => `| ${row.getChildren().map((cell) => cell.getTextContent()).join(" | ")} |`)
+      .map((row) =>
+        $isElementNode(row)
+          ? `| ${row
+              .getChildren()
+              .map((cell) => cell.getTextContent())
+              .join(" | ")} |`
+          : row.getTextContent()
+      )
       .join("\n");
   }
 
