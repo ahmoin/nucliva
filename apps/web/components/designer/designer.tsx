@@ -673,7 +673,10 @@ export function DesignerFrame() {
               const frame = frameOf(event.target);
 
               event.setOrigin(["%", "%"]);
-              event.dragStart?.set([frame.x, frame.y]);
+              // dragStart is false when the resize does not also drag.
+              if (event.dragStart) {
+                event.dragStart.set([frame.x, frame.y]);
+              }
             }}
             onRotate={(event) =>
               writeVars(event.target, { "--rotate": `${event.beforeRotate}deg` })
