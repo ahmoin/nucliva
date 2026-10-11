@@ -38,7 +38,7 @@ type SerializedAutocompleteNode = Spread<
   SerializedLexicalNode
 >;
 
-// The suggestion, shown inline in grey after the caret. It is only there
+// The suggestion, shown inline in gray after the caret. It is only there
 // while it is offered, and is dropped from any document that loads with one.
 export class AutocompleteNode extends DecoratorNode<JSX.Element> {
   __style: Record<string, string>;

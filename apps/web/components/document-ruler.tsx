@@ -178,7 +178,7 @@ function Handle({
 }
 
 // An L for a left stop, a backwards L for a right one, and an upside-down T
-// for a centre one. The upright is the stop.
+// for a center one. The upright is the stop.
 const tabStopShapes: Record<TabStop["type"], string> = {
   center: "M6 2v8M2 10h8",
   left: "M4 2v8h6",
@@ -252,7 +252,7 @@ function $currentBlocks() {
   return block ? [block] : [];
 }
 
-// The ruler above the page. The grey ends are the margins, and the triangles
+// The ruler above the page. The gray ends are the margins, and the triangles
 // drag them. The rectangle is where the first line of the paragraph starts.
 export function Ruler({
   onHide,
@@ -562,7 +562,7 @@ export function Ruler({
           </DropdownMenuCheckboxItem>
         </DropdownMenuContent>
       </DropdownMenu>
-      {/* The point of the menu: it comes from the place that was clicked. Its centre sits on the top edge of the menu and it is drawn over it, with only its two upper edges outlined, so the outline runs around the point and the menu as one shape. */}
+      {/* The point of the menu: it comes from the place that was clicked. Its center sits on the top edge of the menu and it is drawn over it, with only its two upper edges outlined, so the outline runs around the point and the menu as one shape. */}
       {menu === null ? null : (
         <span
           aria-hidden

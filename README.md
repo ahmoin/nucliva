@@ -6,7 +6,7 @@
 
 An AI writing workspace that writes in your voice. Docs, slides and sheets in one place, with an assistant that researches the web, drafts, and shows every change as a suggestion you accept or reject.
 
-> **Work in progress.** Nucliva is being built for the Nebius x NVIDIA Global AI Hackathon (deadline 30 Oct 2026). Things move fast, some parts are rough, and this README will grow with the project. If something here does not match what you see, the code is right and the README is behind.
+> **Work in progress.** Nucliva is being built for the Nebius x NVIDIA Global AI Hackathon (deadline Oct 30, 2026). Things move fast, some parts are rough, and this README will grow with the project. If something here does not match what you see, the code is right and the README is behind.
 
 ## What works today
 
@@ -17,7 +17,7 @@ An AI writing workspace that writes in your voice. Docs, slides and sheets in on
 - **Sheets and slides.** Early versions built on FortuneSheet and a custom designer.
 - **Style profile and knowledge base.** Paste past writing so drafts sound like you. Text is chunked and embedded into pgvector.
 - **Accounts.** Email and password, plus Google sign in.
-- **Landing site.** A home page and a public `/solutions` catalogue with a page for every solution.
+- **Landing site.** A home page and a public `/solutions` catalog with a page for every solution.
 
 ## What is not done yet
 
@@ -68,7 +68,7 @@ Fill in `apps/web/.env.local`:
 | `TAVILY_API_KEY` | a Tavily key |
 | `LANGSMITH_*` | LangSmith tracing (optional) |
 
-In production (nucliva.com), set `BETTER_AUTH_URL` and `NEXT_PUBLIC_APP_URL` to `https://nucliva.com`, and add `https://nucliva.com/api/auth/callback/google` as an authorised redirect URI in the Google console.
+In production (nucliva.com), set `BETTER_AUTH_URL` and `NEXT_PUBLIC_APP_URL` to `https://nucliva.com`, and add `https://nucliva.com/api/auth/callback/google` as an authorized redirect URI in the Google console.
 
 Set up the database, then start the app:
 

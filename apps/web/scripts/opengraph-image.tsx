@@ -6,7 +6,7 @@ import { ImageResponse } from "next/og";
 // on every build. Change the design here, then run that script.
 export const size = { height: 630, width: 1200 };
 
-// ImageResponse cannot read the theme tokens, so the brand colours are written
+// ImageResponse cannot read the theme tokens, so the brand colors are written
 // out here, with the fonts the site uses kept in ./fonts. The picture of the
 // editor is a real screenshot of it (editor-shot.png), with a document that has
 // the AI's suggestions in it.

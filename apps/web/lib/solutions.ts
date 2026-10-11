@@ -5,7 +5,7 @@ export type Kind = "Doc" | "Sheet" | "Slides";
 
 export interface Category {
   blurb: string;
-  // The colour of the dot beside its name.
+  // The color of the dot beside its name.
   dot: string;
   name: string;
   slug: string;
@@ -29,7 +29,7 @@ export const categories: Category[] = [
   },
   {
     blurb:
-      "Briefs, posts and campaigns grounded in what is true on the web today, in a voice your audience already recognises.",
+      "Briefs, posts and campaigns grounded in what is true on the web today, in a voice your audience already recognizes.",
     dot: "bg-fuchsia-500",
     name: "Marketing",
     slug: "marketing",
@@ -223,7 +223,7 @@ export const solutions: Solution[] = [
     category: "operations",
     kind: "Sheet",
     slug: "project-trackers",
-    summary: "Tasks, owners and dates organised for you",
+    summary: "Tasks, owners and dates organized for you",
     title: "Project trackers",
   },
   {
@@ -344,7 +344,7 @@ const details: Record<string, Detail> = {
       "The reference, ready to cite",
     ],
     prompt:
-      "Summarise these three papers on sleep and memory and note how they connect.",
+      "Summarize these three papers on sleep and memory and note how they connect.",
   },
   "market-scans": {
     includes: [
@@ -362,7 +362,7 @@ const details: Record<string, Detail> = {
       "The source for each point, one click away",
     ],
     prompt:
-      "Summarise this matter for the client in plain language, with the issues and next steps.",
+      "Summarize this matter for the client in plain language, with the issues and next steps.",
   },
   "meeting-notes": {
     includes: [

@@ -6,4 +6,4 @@ export const contactEmail = "ahmoin@tutamail.com";
 export const repoUrl = "https://github.com/ahmoin/nucliva";
 
 // The date the legal pages were last changed.
-export const legalUpdated = "11 October 2026";
+export const legalUpdated = "October 11, 2026";

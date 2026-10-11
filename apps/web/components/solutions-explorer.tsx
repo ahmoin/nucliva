@@ -19,7 +19,7 @@ const matches = (solution: Solution, query: string) =>
     .toLowerCase()
     .includes(query.trim().toLowerCase());
 
-// A catalogue of what Nucliva writes, which can be searched and narrowed to one
+// A catalog of what Nucliva writes, which can be searched and narrowed to one
 // line of work.
 export function SolutionsExplorer() {
   const [query, setQuery] = useState("");

@@ -82,7 +82,7 @@ export const firstLineState = createState("firstLine", {
 });
 
 // Where a tab in a paragraph stops, measured from the left margin in pixels.
-// Text after a tab starts at a left stop, is centred on a centre stop and ends
+// Text after a tab starts at a left stop, is centered on a center stop and ends
 // at a right stop.
 export const TAB_STOP_TYPES = ["left", "center", "right"] as const;
 
@@ -442,7 +442,7 @@ function fitTabs(element: HTMLElement, stops: TabStop[]) {
         after.setStartAfter(tab);
       }
 
-      // The text ends at a right stop and is centred on a centre one.
+      // The text ends at a right stop and is centered on a center one.
       const text = after.getBoundingClientRect().width / scale;
 
       width = Math.max(0, width - (stop.type === "center" ? text / 2 : text));

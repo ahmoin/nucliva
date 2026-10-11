@@ -203,7 +203,7 @@ function diffWords(before: string, after: string) {
     }
   }
 
-  // Neighbouring steps of one kind are one.
+  // Neighboring steps of one kind are one.
   const merged: typeof steps = [];
 
   for (const step of steps) {

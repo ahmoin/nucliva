@@ -410,7 +410,7 @@ export function SiteIcon({
   url: string;
 }) {
   return (
-    // biome-ignore lint/performance/noImgElement: a 16px icon from another site gains nothing from the image optimiser
+    // biome-ignore lint/performance/noImgElement: a 16px icon from another site gains nothing from the image optimizer
     <img
       alt=""
       className={cn("size-4 shrink-0 rounded-full bg-card", className)}

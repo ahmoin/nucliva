@@ -144,7 +144,7 @@ const specs: Record<string, Spec> = {
       "Matter review, {name}",
     ],
     lines: [
-      "The clause is common, but the wording here favours the other side.",
+      "The clause is common, but the wording here favors the other side.",
       "{name} wants a plain summary they can forward to their board.",
       "We suggest asking for {n} days notice in place of the current period.",
       "No change is needed, but the point is worth a note on file.",

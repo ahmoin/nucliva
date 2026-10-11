@@ -331,7 +331,7 @@ export const workspaces: Record<string, Workspace> = {
         {
           points: [
             "Newsletter, LinkedIn and Product Hunt",
-            "Launch on 14 June, with a week of posts before",
+            "Launch on June 14, with a week of posts before",
           ],
           title: "Channels and timing",
         },
@@ -362,7 +362,7 @@ export const workspaces: Record<string, Workspace> = {
       {
         ago: 3,
         body: [
-          "## Week of 9 June",
+          "## Week of June 9",
           "- Monday: teaser on LinkedIn",
           "- Wednesday: newsletter with a real draft",
           "- Friday: behind the scenes post",
@@ -375,7 +375,7 @@ export const workspaces: Record<string, Workspace> = {
       "Audience: freelance writers, small agencies and independent bookshops",
       "Main angle: write in your own voice, not in a robot's",
       "Channels: our newsletter, LinkedIn and Product Hunt",
-      "Budget is $4,000 and the launch date is 14 June",
+      "Budget is $4,000 and the launch date is June 14",
       "Our last campaign got a 2.1% click rate, we want to beat it",
     ],
     samples: [

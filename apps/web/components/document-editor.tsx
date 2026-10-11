@@ -118,7 +118,7 @@ const menuButtonClass =
   "justify-between px-2 font-normal text-sm normal-case tracking-normal";
 
 // A toolbar toggle is as wide as the icon buttons beside it. While on it is lit
-// in the brand colour: the hover shade alone would look the same on and off
+// in the brand color: the hover shade alone would look the same on and off
 // with the pointer still over it.
 const toggleClass = "px-0 aria-pressed:bg-primary/15 aria-pressed:text-primary";
 
@@ -249,8 +249,8 @@ const fontName = (family: string) =>
 const FONT_SIZE_MIN = 1;
 const FONT_SIZE_MAX = 400;
 
-// Ten columns: greys, then pure colours, then three tints and three shades of
-// each of those colours.
+// Ten columns: grays, then pure colors, then three tints and three shades of
+// each of those colors.
 const textColors = [
   "#000000 #434343 #666666 #999999 #b7b7b7 #cccccc #d9d9d9 #efefef #f3f3f3 #ffffff",
   "#980000 #ff0000 #ff9900 #ffff00 #00ff00 #00ffff #4a86e8 #0000ff #9900ff #ff00ff",
@@ -262,11 +262,11 @@ const textColors = [
   "#5b0f00 #660000 #783f04 #7f6000 #274e13 #0c343d #1c4587 #073763 #20124d #4c1130",
 ].flatMap((row) => row.split(" "));
 
-// One row of the colour menu, leaving a cell for the button that adds one.
+// One row of the color menu, leaving a cell for the button that adds one.
 const CUSTOM_COLORS_SHOWN = 9;
 
-// The colours in the document that are not in the palette, most used first. A
-// colour counts for as much text as wears it.
+// The colors in the document that are not in the palette, most used first. A
+// color counts for as much text as wears it.
 function $customColors() {
   const usage = new Map<string, number>();
 
@@ -472,7 +472,7 @@ function Toolbar() {
     },
     [applyColor]
   );
-  // The document's custom colours are read afresh each time the menu opens.
+  // The document's custom colors are read afresh each time the menu opens.
   const toggleColorMenu = useCallback(
     (open: boolean) => {
       setColorMenuOpen(open);
@@ -483,7 +483,7 @@ function Toolbar() {
     },
     [editor]
   );
-  // The browser's picker reports every colour dragged across. Only the one it
+  // The browser's picker reports every color dragged across. Only the one it
   // closes on is applied, so undo steps back over it once.
   const customColor = useCallback(
     (input: HTMLInputElement | null) => {
