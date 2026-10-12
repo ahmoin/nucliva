@@ -69,7 +69,8 @@ export function TourBridge() {
       );
     };
 
-    // The three paragraphs of the example, as one box.
+    // The three paragraphs of the example, as one box, as wide as the page so
+    // that the Accept and Reject buttons in its margin are inside it.
     tour.exampleBox = () => {
       const boxes = keys.flatMap((key) => {
         const box = editor.getElementByKey(key)?.getBoundingClientRect();
@@ -81,9 +82,16 @@ export function TourBridge() {
         return null;
       }
 
-      const left = Math.min(...boxes.map((box) => box.left));
+      const page = editor.getRootElement()?.getBoundingClientRect();
+      const left = Math.min(
+        page?.left ?? Number.POSITIVE_INFINITY,
+        ...boxes.map((box) => box.left)
+      );
       const top = Math.min(...boxes.map((box) => box.top));
-      const right = Math.max(...boxes.map((box) => box.right));
+      const right = Math.max(
+        page?.right ?? 0,
+        ...boxes.map((box) => box.right)
+      );
       const bottom = Math.max(...boxes.map((box) => box.bottom));
 
       return new DOMRect(left, top, right - left, bottom - top);

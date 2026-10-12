@@ -8,9 +8,11 @@ import {
 } from "@phosphor-icons/react";
 import { Button } from "@workspace/ui/components/button";
 import { cn } from "@workspace/ui/lib/utils";
+import { BorderBeam } from "border-beam";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { type OrbState, ThinkingOrb } from "thinking-orbs";
 import {
   type TourState,
   tour,
@@ -48,6 +50,14 @@ interface Step {
   body: string;
   // Whether the step has been done. A step without this has a Next button.
   done?: (context: Context) => boolean;
+  // Something to put the cursor in when the step begins, on a screen with a
+  // keyboard. A phone is left to tap it, so that the keyboard does not leap up.
+  focus?: string;
+  // A big orb at the top of the card, for the first and last steps.
+  hero?: OrbState;
+  // The look of the small orb beside what to do. Each step has its own, so
+  // that waiting for you does not look the same every time.
+  orb?: OrbState;
   target?: Target;
   title: string;
 }
@@ -72,23 +82,72 @@ function otherFile(context: Context) {
   return visible(link?.closest("tr")?.getBoundingClientRect());
 }
 
+const PROMPT = '[aria-label="What should we write?"]';
+
+// The smallest box around all of these.
+function around(boxes: (DOMRect | null | undefined)[]) {
+  const found = boxes.filter((box): box is DOMRect => Boolean(visible(box)));
+
+  if (found.length === 0) {
+    return null;
+  }
+
+  const left = Math.min(...found.map((box) => box.left));
+  const top = Math.min(...found.map((box) => box.top));
+  const right = Math.max(...found.map((box) => box.right));
+  const bottom = Math.max(...found.map((box) => box.bottom));
+
+  return new DOMRect(left, top, right - left, bottom - top);
+}
+
+// Everything at the bottom of the editor that Nucliva talks through: the prompt
+// bar with its send button, and the chat above it once there is one. It grows
+// when the reply comes, so the reply is not left in the dark.
+const draftBar = () => {
+  const bar = document.querySelector(PROMPT)?.closest(".sticky");
+
+  // The chat floats above the bar, outside its box, so it is added to it.
+  return around([
+    bar?.getBoundingClientRect(),
+    bar?.querySelector(".bottom-full")?.getBoundingClientRect(),
+  ]);
+};
+
+// The changes in the document, and the bar that settles them, as one area.
+const reviewArea = () =>
+  around([
+    draftBar(),
+    ...[
+      ...document.querySelectorAll("[data-suggestion], [data-suggestion-text]"),
+    ].map((element) => element.getBoundingClientRect()),
+  ]);
+
+// A link in the sidebar. On a phone the sidebar is shut, so until the link is
+// there, the thing to press is the button that opens it.
+const sidebarLink = (href: string) => () =>
+  rectOf(`a[href="${href}"]`) ?? rectOf('[data-sidebar="trigger"]');
+
 const steps: Step[] = [
   {
     body: "A real workspace for this line of work: files, a deck, a sheet and writing samples. There are five things worth trying, and it takes about two minutes. You do each one, and Nucliva waits for you.",
+    hero: "weaving",
     title: "Welcome to the sandbox",
   },
   {
-    ask: "Press Enter to send it",
-    body: "Your request is already typed in. Nucliva writes it from the notes above, in the voice of the writing samples in this workspace.",
+    ask: "Send it with the arrow button",
+    body: "Your request is already typed in. Send it, and Nucliva writes it from the notes above, in the voice of the writing samples in this workspace. On a keyboard, Enter works too.",
     done: ({ changes, start }) => changes > start.changes,
-    target: '[aria-label="What should we write?"]',
+    focus: PROMPT,
+    orb: "composing",
+    target: draftBar,
     title: "Ask Nucliva",
   },
   {
-    ask: "Click Accept All",
-    body: "Every change is in your document in green and red. Nothing goes in until you say so, and you can take each one or all of them.",
+    ask: "Click Accept All, or accept or reject each change",
+    body: "Every change is in your document in green and red, and the chat tells you what it did. Nothing goes in until you say so, and you can take each one or all of them.",
     done: ({ changes, start }) => changes < start.changes,
-    target: 'button[data-accept="true"]:not([data-change])',
+    orb: "weaving",
+    target: reviewArea,
     title: "You decide what goes in",
   },
   {
@@ -99,19 +158,22 @@ const steps: Step[] = [
     ask: "Click the button to add it",
     body: "Nucliva keeps facts in step across a document. Here is one number written three different ways. Add it, then change it.",
     done: ({ example }) => example,
+    orb: "breathing",
     title: "Now the clever part",
   },
   {
     ask: "Change the first number, then wait a moment",
     body: "In the first line, change $4,200,000 to $4,500,000. Nucliva needs a few seconds to read the lines before it can follow your change.",
     done: ({ ripple, start }) => ripple > start.ripple,
+    orb: "solving",
     target: () => visible(tour.exampleBox?.()),
     title: "Change a number",
   },
   {
-    ask: "Press Tab to take the next one",
-    body: "The other two lines now suggest the new amount, each in its own style: $4.5M stays short and 4.5 million dollars stays long. Tab takes them one by one, and Esc turns them all down.",
+    ask: "Take one: press Tab, or tap Accept",
+    body: "The other two lines now suggest the new amount, each in its own style: $4.5M stays short and 4.5 million dollars stays long. Accept them one by one, with Tab or the Accept button. Esc turns them all down.",
     done: ({ ripple, start }) => ripple < start.ripple,
+    orb: "connecting",
     target: () => visible(tour.exampleBox?.()),
     title: "It found the others",
   },
@@ -119,13 +181,15 @@ const steps: Step[] = [
     ask: "Open My Files",
     body: "This sandbox came with dozens of files: documents, a sheet and a deck. They are all in My Files.",
     done: ({ path }) => path === "/dashboard/my-files",
-    target: 'a[href="/dashboard/my-files"]',
+    orb: "searching",
+    target: sidebarLink("/dashboard/my-files"),
     title: "Look around the workspace",
   },
   {
     ask: "Click a file to open it",
     body: "Open the sheet or the deck, or any document. They are real: the sheet is a spreadsheet and the deck is a slide editor.",
     done: ({ path, start }) => DOCUMENT.test(path) && path !== start.path,
+    orb: "working",
     target: otherFile,
     title: "Open another file",
   },
@@ -133,18 +197,21 @@ const steps: Step[] = [
     ask: "Open Style Profile",
     body: "This is where Nucliva's voice comes from: the writing samples it matches. Add your own and every draft sounds more like you.",
     done: ({ path }) => path === "/dashboard/style-profile",
-    target: 'a[href="/dashboard/style-profile"]',
+    orb: "listening",
+    target: sidebarLink("/dashboard/style-profile"),
     title: "See where the voice comes from",
   },
   {
     ask: "Open Knowledge Base",
     body: "And this is what it can draw on besides the web: the sources indexed from your workspace.",
     done: ({ path }) => path === "/dashboard/knowledge-base",
-    target: 'a[href="/dashboard/knowledge-base"]',
+    orb: "shaping",
+    target: sidebarLink("/dashboard/knowledge-base"),
     title: "What it knows",
   },
   {
     body: "You asked, reviewed, kept a fact in step and looked around. Everything here is yours to keep: sign up and it all moves to your account.",
+    hero: "breathing",
     title: "That is the loop",
   },
 ];
@@ -212,13 +279,29 @@ function useBox(step: Step, context: Context, active: boolean) {
       setBox((previous) => (sameBox(previous, next) ? previous : next));
     };
 
+    // When the page changes under the highlight, as it does when the chat
+    // opens above the prompt, it follows on the next frame, not a moment later.
+    let frame = 0;
+    const soon = () => {
+      cancelAnimationFrame(frame);
+      frame = requestAnimationFrame(measure);
+    };
+    const changes = new MutationObserver(soon);
+
     measure();
+    changes.observe(document.body, {
+      attributes: true,
+      childList: true,
+      subtree: true,
+    });
     window.addEventListener("scroll", measure, true);
     window.addEventListener("resize", measure);
 
     const poll = setInterval(measure, POLL_EVERY);
 
     return () => {
+      cancelAnimationFrame(frame);
+      changes.disconnect();
       window.removeEventListener("scroll", measure, true);
       window.removeEventListener("resize", measure);
       clearInterval(poll);
@@ -258,14 +341,33 @@ const move =
 
 // Everything is dimmed except the thing to use, which has a ring around it. The
 // dimmed part takes clicks, so that only the highlighted thing can be used.
+// Whether the person has asked their device for less motion.
+function usePrefersReducedMotion() {
+  const [reduced, setReduced] = useState(false);
+
+  useEffect(() => {
+    const query = window.matchMedia("(prefers-reduced-motion: reduce)");
+    const update = () => setReduced(query.matches);
+
+    update();
+    query.addEventListener("change", update);
+
+    return () => query.removeEventListener("change", update);
+  }, []);
+
+  return reduced;
+}
+
 function Spotlight({
   blocking,
   box,
   onBlocked,
+  reduced,
 }: {
   blocking: boolean;
   box: Box | null;
   onBlocked: () => void;
+  reduced: boolean;
 }) {
   const catches = blocking ? "" : "pointer-events-none";
 
@@ -318,7 +420,7 @@ function Spotlight({
       <div
         aria-hidden
         className={cn(
-          "pointer-events-none fixed z-[61] border-2 border-primary shadow-[0_0_24px_2px_color-mix(in_oklab,var(--primary)_55%,transparent)]",
+          "pointer-events-none fixed z-[61] shadow-[0_0_32px_4px_color-mix(in_oklab,var(--primary)_40%,transparent)]",
           move
         )}
         style={{
@@ -328,7 +430,20 @@ function Spotlight({
           width: box.width,
         }}
       >
-        <span className="absolute -inset-1 border border-primary/60 motion-safe:animate-pulse" />
+        {/* A light travels around the edge of the thing to use. Under reduced
+            motion it is left off, and the plain ring is all there is. */}
+        <BorderBeam
+          active={!reduced}
+          className="size-full"
+          colorVariant="colorful"
+          size="md"
+          theme="dark"
+        >
+          <div
+            className="size-full border-2 border-primary/80"
+            style={{ borderRadius: 2 }}
+          />
+        </BorderBeam>
       </div>
     </>
   );
@@ -351,26 +466,40 @@ function Progress({ index }: { index: number }) {
   );
 }
 
-// What to do, with a pulsing mark that becomes a tick once it is done.
-function AskRow({ ask, complete }: { ask: string; complete: boolean }) {
+// What to do, with a small living orb that becomes a tick once it is done.
+function AskRow({
+  ask,
+  complete,
+  orb,
+}: {
+  ask: string;
+  complete: boolean;
+  orb: OrbState;
+}) {
   const caption = complete ? "Done" : ask;
 
   return (
     <div
       className={cn(
-        "mt-4 flex items-center gap-2.5 border px-3 py-2.5 text-sm transition-colors duration-300",
+        "mt-4 flex items-center gap-2.5 border px-3 py-2 text-sm transition-colors duration-300",
         complete
           ? "border-primary bg-primary/10 text-foreground"
           : "text-muted-foreground"
       )}
     >
       {complete ? (
-        <CheckIcon className="size-4 shrink-0 text-primary" weight="bold" />
+        <CheckIcon
+          className="motion-safe:zoom-in-50 size-5 shrink-0 text-primary motion-safe:animate-in motion-safe:duration-300"
+          weight="bold"
+        />
       ) : (
-        <span className="relative flex size-2.5 shrink-0">
-          <span className="absolute inline-flex size-full bg-primary opacity-60 motion-safe:animate-ping" />
-          <span className="relative inline-flex size-2.5 bg-primary" />
-        </span>
+        <ThinkingOrb
+          aria-hidden="true"
+          className="shrink-0"
+          size={20}
+          state={orb}
+          theme="dark"
+        />
       )}
       <span>{caption}</span>
     </div>
@@ -470,6 +599,15 @@ function TourCard({
           </button>
         </div>
         <div className="flex flex-col gap-2">
+          {step.hero ? (
+            <ThinkingOrb
+              aria-hidden="true"
+              className="mb-1"
+              size={64}
+              state={step.hero}
+              theme="dark"
+            />
+          ) : null}
           <span className="text-muted-foreground text-xs">
             Step {index + 1} of {steps.length}
           </span>
@@ -483,7 +621,13 @@ function TourCard({
             {step.action.label}
           </Button>
         ) : null}
-        {step.ask ? <AskRow ask={step.ask} complete={complete} /> : null}
+        {step.ask ? (
+          <AskRow
+            ask={step.ask}
+            complete={complete}
+            orb={step.orb ?? "breathing"}
+          />
+        ) : null}
         {index === steps.length - 1 ? (
           <p className="mt-4 text-muted-foreground text-xs">
             <Link className="text-foreground underline" href="/signup">
@@ -519,6 +663,8 @@ function Tour() {
   });
   const [nudge, setNudge] = useState(0);
   const lastDoc = useRef("");
+  const focused = useRef(-1);
+  const reduced = usePrefersReducedMotion();
   const latest = useRef({ path, state });
   const step = steps[index] as Step;
 
@@ -566,6 +712,23 @@ function Tour() {
     open && start.step === index && Boolean(step.done?.(context));
   // A step that points at something that is not there is not a trap.
   const blocking = open && !(step.target && !box);
+
+  // Where typing is wanted, the cursor is put there once, as the step starts.
+  useEffect(() => {
+    const field = step.focus;
+
+    if (!(open && field && box) || focused.current === index) {
+      return;
+    }
+
+    focused.current = index;
+
+    if (window.matchMedia("(pointer: fine)").matches) {
+      document
+        .querySelector<HTMLElement>(field)
+        ?.focus({ preventScroll: true });
+    }
+  }, [box, index, open, step.focus]);
 
   const next = useCallback(
     () => setIndex((at) => Math.min(at + 1, steps.length - 1)),
@@ -618,7 +781,12 @@ function Tour() {
 
   return (
     <>
-      <Spotlight blocking={blocking} box={box} onBlocked={flash} />
+      <Spotlight
+        blocking={blocking}
+        box={box}
+        onBlocked={flash}
+        reduced={reduced}
+      />
       <TourCard
         complete={complete}
         index={index}

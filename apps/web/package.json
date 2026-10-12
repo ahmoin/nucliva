@@ -30,6 +30,7 @@
     "@workspace/db": "workspace:*",
     "@workspace/ui": "workspace:*",
     "better-auth": "1.7.2",
+    "border-beam": "^1.4.1",
     "cn": "^0.4.0",
     "dexie": "^4.4.6",
     "drizzle-orm": "^0.45.2",
@@ -40,6 +41,7 @@
     "react": "19.2.4",
     "react-dom": "19.2.4",
     "react-moveable": "^0.56.0",
+    "thinking-orbs": "^0.3.2",
     "use-stick-to-bottom": "^1.1.6",
     "zod": "^4.4.3"
   },
