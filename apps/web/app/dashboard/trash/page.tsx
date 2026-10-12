@@ -4,7 +4,7 @@ import { EmptyState } from "@/components/empty-state";
 import { EmptyTrashButton } from "@/components/empty-trash-button";
 import { FileTable } from "@/components/file-table";
 import { PageHeader } from "@/components/page-header";
-import { getUserId, listDocuments } from "@/lib/documents";
+import { getUserId, listDocuments } from "@/lib/db/documents";
 
 export default async function Page() {
   const trashed = await listDocuments(await getUserId(), { trashed: true });

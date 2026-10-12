@@ -1,5 +1,5 @@
-import { categories, solutionPath, solutions } from "@/lib/solutions";
-import { md, SUMMARY, TAGLINE } from "@/lib/markdown";
+import { md, SUMMARY, TAGLINE } from "@/lib/content/markdown";
+import { categories, solutionPath, solutions } from "@/lib/content/solutions";
 
 // A short guide to the site for language models and the tools that read it:
 // what Nucliva is, and where to find a clean Markdown version of every page.

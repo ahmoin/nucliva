@@ -1,23 +1,5 @@
 "use client";
 
-import {
-  ArrowClockwiseIcon,
-  ArrowCounterClockwiseIcon,
-  CaretDownIcon,
-  CheckIcon,
-  ListBulletsIcon,
-  MinusIcon,
-  PlusIcon,
-  QuotesIcon,
-  RulerIcon,
-  TextAlignCenterIcon,
-  TextAlignJustifyIcon,
-  TextAlignLeftIcon,
-  TextAlignRightIcon,
-  TextBIcon,
-  TextItalicIcon,
-  type Icon,
-} from "@phosphor-icons/react";
 import { $isCodeNode, CodeNode } from "@lexical/code";
 import { LinkNode } from "@lexical/link";
 import {
@@ -50,6 +32,25 @@ import {
   $patchStyleText,
   getCSSFromStyleObject,
 } from "@lexical/selection";
+import { TableCellNode, TableNode, TableRowNode } from "@lexical/table";
+import {
+  ArrowClockwiseIcon,
+  ArrowCounterClockwiseIcon,
+  CaretDownIcon,
+  CheckIcon,
+  type Icon,
+  ListBulletsIcon,
+  MinusIcon,
+  PlusIcon,
+  QuotesIcon,
+  RulerIcon,
+  TextAlignCenterIcon,
+  TextAlignJustifyIcon,
+  TextAlignLeftIcon,
+  TextAlignRightIcon,
+  TextBIcon,
+  TextItalicIcon,
+} from "@phosphor-icons/react";
 import { Button } from "@workspace/ui/components/button";
 import {
   DropdownMenu,
@@ -67,7 +68,6 @@ import {
 } from "@workspace/ui/components/dropdown-menu";
 import { Input } from "@workspace/ui/components/input";
 import { Separator } from "@workspace/ui/components/separator";
-import { TableCellNode, TableNode, TableRowNode } from "@lexical/table";
 import { Toggle } from "@workspace/ui/components/toggle";
 import {
   $getRoot,
@@ -94,7 +94,7 @@ import {
 } from "@/components/document-autocomplete";
 import { DraftBar } from "@/components/document-draft-bar";
 import { DocumentPages, PAGE_WIDTH } from "@/components/document-pages";
-import { DOCUMENT_TRANSFORMERS } from "@/components/document-table";
+import { RipplePlugin, useFactStore } from "@/components/document-ripple";
 import { Ruler } from "@/components/document-ruler";
 import {
   $blockOf,
@@ -108,7 +108,9 @@ import {
   textStyles,
   useTextStyles,
 } from "@/components/document-styles";
-import { localDb } from "@/lib/local-db";
+import { DOCUMENT_TRANSFORMERS } from "@/components/document-table";
+import { TourBridge } from "@/components/sandbox-tour-bridge";
+import { localDb } from "@/lib/db/local";
 
 const zoomLevels = [50, 75, 90, 100, 125, 150, 200];
 
@@ -960,7 +962,10 @@ function Toolbar() {
             style={{ backgroundColor: color ?? undefined }}
           />
         </DropdownMenuTrigger>
-        <DropdownMenuContent className="w-auto min-w-0" finalFocus={focusEditor}>
+        <DropdownMenuContent
+          className="w-auto min-w-0"
+          finalFocus={focusEditor}
+        >
           <div className="grid grid-cols-10 gap-1">
             {textColors.map(swatch)}
           </div>
@@ -1002,22 +1007,25 @@ function Toolbar() {
           <AlignIcon />
           <CaretDownIcon className="size-2.5 text-muted-foreground" />
         </DropdownMenuTrigger>
-        <DropdownMenuContent className="w-auto min-w-0" finalFocus={focusEditor}>
+        <DropdownMenuContent
+          className="w-auto min-w-0"
+          finalFocus={focusEditor}
+        >
           <div className="flex gap-1">
             {alignments.map(({ label, value }) => {
               const ItemIcon = alignmentIcons[value];
 
               return (
-              <DropdownMenuItem
-                aria-label={label}
-                className="size-8 justify-center p-0 data-[current=true]:bg-primary/15 data-[current=true]:text-primary"
-                data-align={value}
-                data-current={value === align}
-                key={value}
-                onClick={pickAlign}
-              >
-                <ItemIcon />
-              </DropdownMenuItem>
+                <DropdownMenuItem
+                  aria-label={label}
+                  className="size-8 justify-center p-0 data-[current=true]:bg-primary/15 data-[current=true]:text-primary"
+                  data-align={value}
+                  data-current={value === align}
+                  key={value}
+                  onClick={pickAlign}
+                >
+                  <ItemIcon />
+                </DropdownMenuItem>
               );
             })}
           </div>
@@ -1047,11 +1055,14 @@ function Toolbar() {
 
 function DocumentSurface({
   content,
+  guest,
   id,
   title: initialTitle,
   unsynced,
 }: {
   content: object;
+  // Whether this is someone trying the sandbox, who is shown a tour.
+  guest: boolean;
   id: string;
   title: string;
   unsynced: boolean;
@@ -1127,9 +1138,23 @@ function DocumentSurface({
     [schedule]
   );
 
+  // What the document knows about its facts is saved with its text.
+  const facts = useFactStore((content as { facts?: unknown }).facts);
+
   const handleChange = useCallback(
-    (state: EditorState) => schedule({ content: state.toJSON() }),
-    [schedule]
+    (state: EditorState) =>
+      schedule({ content: { ...state.toJSON(), facts: facts.data } }),
+    [facts, schedule]
+  );
+
+  useEffect(
+    () =>
+      facts.subscribe(() =>
+        schedule({
+          content: { ...(latest.current.content as object), facts: facts.data },
+        })
+      ),
+    [facts, schedule]
   );
 
   useEffect(() => {
@@ -1263,8 +1288,10 @@ function DocumentSurface({
         <div className="sticky bottom-4 z-10 mx-auto w-full max-w-2xl">
           <DraftBar change={change} documentId={id} onChange={setChange} />
         </div>
+        {guest ? <TourBridge /> : null}
         <HistoryPlugin />
         <AutocompletePlugin />
+        <RipplePlugin store={facts} />
         <TabIndentationPlugin />
         <ListPlugin />
         <TablePlugin />
@@ -1278,11 +1305,13 @@ function DocumentSurface({
 
 export function DocumentEditor({
   content,
+  guest = false,
   id,
   title,
   updatedAt,
 }: {
   content: object;
+  guest?: boolean;
   id: string;
   title: string;
   updatedAt: number;
@@ -1328,6 +1357,7 @@ export function DocumentEditor({
   return (
     <DocumentSurface
       content={initial.content}
+      guest={guest}
       id={id}
       title={initial.title}
       unsynced={initial.unsynced}

@@ -16,11 +16,13 @@ import { $isTableNode, TableNode } from "@lexical/table";
 import { $dfs } from "@lexical/utils";
 import { Button } from "@workspace/ui/components/button";
 import {
+  $createParagraphNode,
   $createTextNode,
   $getNodeByKey,
   $getRoot,
   $getState,
   $isElementNode,
+  $isLineBreakNode,
   $isTextNode,
   $setState,
   createState,
@@ -41,8 +43,8 @@ import {
 } from "react";
 import { styleFor, useMargins } from "@/components/document-styles";
 import { DOCUMENT_TRANSFORMERS } from "@/components/document-table";
-import type { Edit } from "@/lib/style-engine";
-import type { Source } from "@/lib/tavily";
+import type { Edit } from "@/lib/ai/style-engine";
+import type { Source } from "@/lib/ai/tavily";
 
 // Changes the AI proposes are made in the document itself, and wait there to be
 // accepted or rejected. A block, or a few words in one, is either new ("add")
@@ -52,6 +54,8 @@ import type { Source } from "@/lib/tavily";
 interface Suggestion {
   id: string;
   kind: "add" | "remove";
+  // A change the editor is less sure of, shown more quietly.
+  soft?: boolean;
 }
 
 export const suggestionState = createState("suggestion", {
@@ -60,7 +64,11 @@ export const suggestionState = createState("suggestion", {
 
     return typeof suggestion?.id === "string" &&
       (suggestion.kind === "add" || suggestion.kind === "remove")
-      ? { id: suggestion.id, kind: suggestion.kind }
+      ? {
+          id: suggestion.id,
+          kind: suggestion.kind,
+          ...(suggestion.soft === true ? { soft: true } : {}),
+        }
       : null;
   },
 });
@@ -225,7 +233,12 @@ function diffWords(before: string, after: string) {
 // each as a change of its own, and leaves the rest of the block alone. This is
 // for a rewrite that touches a few words; it says no when most of the text
 // differs, or the block is more than text, and the block is replaced whole.
-function $diffInPlace(block: ElementNode, fresh: ElementNode) {
+function $diffInPlace(
+  block: ElementNode,
+  fresh: ElementNode,
+  options?: { prefix?: string; soft?: boolean }
+) {
+  const newId = () => `${options?.prefix ?? ""}${crypto.randomUUID()}`;
   const before = $runs(block);
   const after = $runs(fresh);
   const diff =
@@ -239,7 +252,7 @@ function $diffInPlace(block: ElementNode, fresh: ElementNode) {
 
   const nodes: TextNode[] = [];
   const hunks = new Set<string>();
-  let id = crypto.randomUUID();
+  let id = newId();
   let was = 0;
   let now = 0;
   let open = false;
@@ -256,7 +269,7 @@ function $diffInPlace(block: ElementNode, fresh: ElementNode) {
       // Words between two changes end the change before them. A space does
       // not: "Q3" becoming "Quarter 3" is one change.
       if (open && step.text.trim()) {
-        id = crypto.randomUUID();
+        id = newId();
         open = false;
       }
     } else {
@@ -269,7 +282,13 @@ function $diffInPlace(block: ElementNode, fresh: ElementNode) {
         .setStyle(run.style);
 
       if (step.kind !== "equal") {
-        $setState(node, suggestionState, { id, kind: step.kind });
+        $setState(
+          node,
+          suggestionState,
+          options?.soft
+            ? { id, kind: step.kind, soft: true }
+            : { id, kind: step.kind }
+        );
         node.toggleUnmergeable();
         hunks.add(id);
       }
@@ -290,6 +309,131 @@ function $diffInPlace(block: ElementNode, fresh: ElementNode) {
   block.append(...nodes);
 
   return hunks.size;
+}
+
+// A block's text as pieces with their places in it, counted the way the text of
+// the block counts: a line break is one character, and a link's text is part of
+// the block's.
+export function $segments(block: ElementNode) {
+  const segments: { end: number; node: LexicalNode; start: number }[] = [];
+  let at = 0;
+
+  const walk = (parent: ElementNode) => {
+    for (const child of parent.getChildren()) {
+      if ($isTextNode(child) || $isLineBreakNode(child)) {
+        const size = child.getTextContentSize();
+
+        segments.push({ end: at + size, node: child, start: at });
+        at += size;
+      } else if ($isElementNode(child) && child.isInline()) {
+        walk(child);
+      }
+    }
+  };
+
+  walk(block);
+
+  return segments;
+}
+
+export interface Span {
+  end: number;
+  // The change this belongs to. Each span is a change of its own.
+  id: string;
+  soft?: boolean;
+  start: number;
+  text: string;
+}
+
+// Shows words in a block being replaced by other words: the old ones as going
+// and the new ones as coming, each pair a change of its own. The rest of the
+// block is left as it was, with the new words in the format of the old. A span
+// that runs over something other than text is skipped. Says how many it did.
+export function $replaceSpans(block: ElementNode, spans: Span[]) {
+  let done = 0;
+
+  // From the end, so that one change does not move the place of the next.
+  for (const span of [...spans].sort((a, b) => b.start - a.start)) {
+    const parts = $segments(block).filter(
+      (part) => part.start < span.end && part.end > span.start
+    );
+
+    if (parts.length === 0 || !parts.every((part) => $isTextNode(part.node))) {
+      continue;
+    }
+
+    const going: TextNode[] = [];
+
+    for (const part of parts) {
+      const node = part.node as TextNode;
+      const from = Math.max(span.start, part.start) - part.start;
+      const to = Math.min(span.end, part.end) - part.start;
+      const edges = [from, to].filter(
+        (edge) => edge > 0 && edge < node.getTextContentSize()
+      );
+      const pieces = edges.length > 0 ? node.splitText(...edges) : [node];
+      const piece = pieces[from > 0 ? 1 : 0];
+
+      if (piece) {
+        going.push(piece);
+      }
+    }
+
+    const last = going.at(-1);
+    const [first] = going;
+
+    if (!(first && last)) {
+      continue;
+    }
+
+    const mark = (node: TextNode, kind: "add" | "remove") => {
+      $setState(
+        node,
+        suggestionState,
+        span.soft
+          ? { id: span.id, kind, soft: true }
+          : { id: span.id, kind }
+      );
+
+      if (!node.isUnmergeable()) {
+        node.toggleUnmergeable();
+      }
+    };
+    const coming = $createTextNode(span.text)
+      .setFormat(first.getFormat())
+      .setStyle(first.getStyle());
+
+    for (const node of going) {
+      mark(node, "remove");
+    }
+
+    last.insertAfter(coming);
+    mark(coming, "add");
+    done += 1;
+  }
+
+  return done;
+}
+
+// A block with some of its words changed to say something else, shown as the
+// words that differ and not as a block taken out and put back. The new text
+// takes the format of the start of the block. Says how many changes it made.
+export function $suggestRewrite(
+  block: ElementNode,
+  text: string,
+  options: { prefix: string; soft?: boolean }
+) {
+  const [first] = block.getAllTextNodes();
+  const fresh = $createParagraphNode();
+  const node = $createTextNode(text);
+
+  if (first) {
+    node.setFormat(first.getFormat()).setStyle(first.getStyle());
+  }
+
+  fresh.append(node);
+
+  return $diffInPlace(block, fresh, options) ?? 0;
 }
 
 // A mark like [2] in the text becomes a link to the second source.
@@ -561,8 +705,15 @@ export function useSuggestionMarks() {
 
           if (suggestion) {
             element.dataset[attribute] = suggestion.kind;
+
+            if (suggestion.soft) {
+              element.dataset.suggestionSoft = "true";
+            } else {
+              delete element.dataset.suggestionSoft;
+            }
           } else {
             delete element.dataset[attribute];
+            delete element.dataset.suggestionSoft;
           }
         }
       });

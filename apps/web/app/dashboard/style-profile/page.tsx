@@ -23,7 +23,7 @@ import { desc, eq } from "drizzle-orm";
 import { AppShell } from "@/components/app-shell";
 import { EmptyState } from "@/components/empty-state";
 import { PageHeader } from "@/components/page-header";
-import { formatDate, getUserId } from "@/lib/documents";
+import { formatDate, getUserId } from "@/lib/db/documents";
 
 const sourceLabels = {
   document: "Document",

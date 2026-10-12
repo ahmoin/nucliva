@@ -1,6 +1,6 @@
 import type { MetadataRoute } from "next";
+import { categories, solutionPath, solutions } from "@/lib/content/solutions";
 import { siteUrl } from "@/lib/site";
-import { categories, solutionPath, solutions } from "@/lib/solutions";
 
 // Every public page: the site itself, the legal pages, and a page for each
 // line of work and each solution.

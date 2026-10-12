@@ -31,7 +31,7 @@ export default function CookiesPage() {
           </li>
           <li>
             <strong>Sign in cookies.</strong> Short-lived cookies that complete
-            signing in with Google safely, and that expire soon after.
+            signing in with Google or GitHub safely, and that expire soon after.
           </li>
         </ul>
         <p>
@@ -63,10 +63,11 @@ export default function CookiesPage() {
       </LegalSection>
       <LegalSection title="Your choices">
         <p>
-          You can delete cookies and site data at any time in your browser&apos;s
-          settings. If you block the session cookie, you will not be able to stay
-          signed in. Clearing local storage removes your chat history and local
-          copies from this device, but not the documents saved to your account.
+          You can delete cookies and site data at any time in your
+          browser&apos;s settings. If you block the session cookie, you will not
+          be able to stay signed in. Clearing local storage removes your chat
+          history and local copies from this device, but not the documents saved
+          to your account.
         </p>
       </LegalSection>
       <LegalSection title="Changes and questions">

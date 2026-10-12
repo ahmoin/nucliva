@@ -37,9 +37,9 @@ import {
   SidebarMenuItem,
   useSidebar,
 } from "@workspace/ui/components/sidebar";
-import { useTheme } from "next-themes";
 import { useRouter } from "next/navigation";
-import { authClient } from "@/lib/auth-client";
+import { useTheme } from "next-themes";
+import { authClient } from "@/lib/auth/client";
 
 export function NavUser({
   user,

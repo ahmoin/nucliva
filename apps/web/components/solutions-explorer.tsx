@@ -12,7 +12,7 @@ import {
   categoryOf,
   type Solution,
   solutions,
-} from "@/lib/solutions";
+} from "@/lib/content/solutions";
 
 const matches = (solution: Solution, query: string) =>
   `${solution.title} ${solution.summary} ${solution.kind} ${categoryOf(solution.category)?.name}`

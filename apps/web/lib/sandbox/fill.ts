@@ -2,7 +2,7 @@ import type {
   SandboxDeck,
   SandboxDoc,
   SandboxSheet,
-} from "@/lib/sandbox-data";
+} from "@/lib/sandbox/data";
 
 // The rest of a sandbox workspace: dozens of ordinary files that a real
 // account would have piled up over a year. They are made from templates, with

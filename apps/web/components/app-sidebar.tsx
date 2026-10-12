@@ -27,7 +27,7 @@ import { usePathname, useRouter } from "next/navigation";
 import type * as React from "react";
 import { Wordmark } from "@/components/logo";
 import { NavUser } from "@/components/nav-user";
-import { authClient } from "@/lib/auth-client";
+import { authClient } from "@/lib/auth/client";
 import {
   collectionItems,
   mainItems,

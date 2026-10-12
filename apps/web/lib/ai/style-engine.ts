@@ -1,13 +1,13 @@
 import { z } from "zod";
+import { findSimilarChunks } from "@/lib/ai/embeddings";
+import { getChatModel } from "@/lib/ai/nebius";
 import {
   editPrompt,
   ghostwriterPrompt,
   researchPrompt,
   toneAnalysisPrompt,
 } from "@/lib/ai/prompts";
-import { findSimilarChunks } from "@/lib/embeddings";
-import { getChatModel } from "@/lib/nebius";
-import { type Source, searchWeb } from "@/lib/tavily";
+import { type Source, searchWeb } from "@/lib/ai/tavily";
 
 const toneMarkersSchema = z.object({
   formality: z
@@ -100,12 +100,10 @@ export async function suggestEdits({
     .join("\n\n");
   const messages: ["ai" | "human" | "system", string][] = [
     ["system", system],
-    ...history.map(
-      ({ role, text }): ["ai" | "human", string] => [
-        role === "user" ? "human" : "ai",
-        text,
-      ]
-    ),
+    ...history.map(({ role, text }): ["ai" | "human", string] => [
+      role === "user" ? "human" : "ai",
+      text,
+    ]),
     ["human", prompt],
   ];
   const model = getChatModel("ultra", { temperature: 0.7 });

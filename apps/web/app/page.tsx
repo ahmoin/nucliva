@@ -14,13 +14,14 @@ import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader, siteHotkeys } from "@/components/site-header";
 import { SolutionPreview } from "@/components/solution-preview";
 import { SolutionsShowcase } from "@/components/solutions-showcase";
-import { auth } from "@/lib/auth";
+import { TrySandboxButton } from "@/components/try-sandbox-button";
+import { auth } from "@/lib/auth/server";
 import {
   categoryOf,
   detailOf,
   solutionPath,
   solutions,
-} from "@/lib/solutions";
+} from "@/lib/content/solutions";
 
 // The solutions named on the first screen, and the three shown with the list of
 // who Nucliva is for.
@@ -135,30 +136,27 @@ export default async function Page() {
             <div
               className={`flex flex-col items-center gap-4 delay-200 ${enter}`}
             >
-              <div className="flex flex-wrap items-center justify-center gap-3">
+              <div className="flex flex-wrap items-start justify-center gap-3">
+                {/* The way in for anyone who wants to see it working first. */}
+                <TrySandboxButton
+                  category="founders"
+                  example="investor-updates"
+                  hint={false}
+                  label="Try the sandbox"
+                />
                 <Button
                   className="h-11 px-6"
                   nativeButton={false}
                   render={<Link href="/signup" />}
                   size="lg"
+                  variant="outline"
                 >
                   Get started free
                   <KeyHint>S</KeyHint>
-                  <ArrowRightIcon />
-                </Button>
-                <Button
-                  className="h-11 px-6"
-                  nativeButton={false}
-                  render={<Link href="/login" />}
-                  size="lg"
-                  variant="outline"
-                >
-                  Log in
-                  <KeyHint>L</KeyHint>
                 </Button>
               </div>
               <p className="text-muted-foreground text-sm">
-                Free to start. No credit card required.
+                Try it with no sign up. Free to start, no credit card.
               </p>
             </div>
             {/* What Nucliva is for, a click from the first screen. */}

@@ -11,7 +11,7 @@ import {
   detailOf,
   solutionPath,
   solutionsIn,
-} from "@/lib/solutions";
+} from "@/lib/content/solutions";
 
 // The lines of work Nucliva is for, as a list that opens one at a time: what
 // the work is, what Nucliva does in it, and a few things it writes there.

@@ -1,8 +1,8 @@
 import { headers } from "next/headers";
+import { getChatModel } from "@/lib/ai/nebius";
 import { autocompleteInput, autocompletePrompt } from "@/lib/ai/prompts";
-import { auth } from "@/lib/auth";
+import { auth } from "@/lib/auth/server";
 import { limitGuest } from "@/lib/rate-limit";
-import { getChatModel } from "@/lib/nebius";
 
 // The model is asked for {"space", "text"}, and the space is put back in front
 // of the text here. A reply that is not that is taken as the text itself, with

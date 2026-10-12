@@ -13,7 +13,7 @@ import { cn } from "@workspace/ui/lib/utils";
 import Link from "next/link";
 import { useRef, useState } from "react";
 import { LogoMark } from "@/components/logo";
-import { authClient } from "@/lib/auth-client";
+import { authClient } from "@/lib/auth/client";
 
 export function ForgotPasswordForm({
   className,

@@ -30,20 +30,21 @@ export default function PrivacyPage() {
       <LegalSection title="What we collect">
         <p>
           <strong>Your account.</strong> Your name and email address. If you
-          sign in with Google, we also get your profile picture. If you sign up
-          with a password, we store a hash of it, never the password itself.
+          sign in with Google or GitHub, we also get your profile picture. If
+          you sign up with a password, we store a hash of it, never the password
+          itself.
         </p>
         <p>
-          <strong>Guest accounts.</strong> If you try a solution without
-          signing up, we create a temporary guest account, with no name or
-          email, and put sample notes in it. If you sign up afterwards, what you
-          made moves to your new account. Guest accounts that are never used
-          again may be deleted.
+          <strong>Guest accounts.</strong> If you try a solution without signing
+          up, we create a temporary guest account, with no name or email, and
+          put sample notes in it. If you sign up afterwards, what you made moves
+          to your new account. Guest accounts that are never used again may be
+          deleted.
         </p>
         <p>
-          <strong>Sign in details.</strong> When you sign in we record a session,
-          including the IP address and browser details (the user agent) it came
-          from, so we can keep you signed in and spot misuse.
+          <strong>Sign in details.</strong> When you sign in we record a
+          session, including the IP address and browser details (the user agent)
+          it came from, so we can keep you signed in and spot misuse.
         </p>
         <p>
           <strong>Your content.</strong> Documents, slides and sheets you
@@ -94,7 +95,10 @@ export default function PrivacyPage() {
             Nemotron) and the embedding model. The text you ask about, along
             with the parts of your document and style samples needed for the
             request, is sent to it each time you use the assistant, autocomplete
-            or add text to your knowledge base.
+            or add text to your knowledge base. Paragraphs that contain numbers,
+            amounts, percentages or dates are also sent in the background as you
+            write, so that Nucliva can keep those facts in step across a
+            document.
           </li>
           <li>
             <strong>Tavily</strong> runs the web search when you ask Nucliva to
@@ -102,7 +106,8 @@ export default function PrivacyPage() {
             your prompt, is sent to it.
           </li>
           <li>
-            <strong>Google</strong> handles sign in when you choose it.
+            <strong>Google</strong> and <strong>GitHub</strong> handle sign in
+            when you choose them.
           </li>
           <li>
             <strong>LangSmith</strong> may receive prompts and replies for
@@ -125,7 +130,9 @@ export default function PrivacyPage() {
       </LegalSection>
       <LegalSection title="Your choices">
         <ul>
-          <li>Edit or delete your documents and samples in Nucliva at any time.</li>
+          <li>
+            Edit or delete your documents and samples in Nucliva at any time.
+          </li>
           <li>
             Ask us for a copy of your data, to correct it, or to delete it, at{" "}
             <a href={`mailto:${contactEmail}`}>{contactEmail}</a>.
@@ -150,8 +157,8 @@ export default function PrivacyPage() {
       <LegalSection title="Security">
         <p>
           We take care to protect your data, as described on our{" "}
-          <Link href="/security">Security page</Link>. No service can promise perfect
-          security.
+          <Link href="/security">Security page</Link>. No service can promise
+          perfect security.
         </p>
       </LegalSection>
       <LegalSection title="Changes">

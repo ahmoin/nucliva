@@ -1,6 +1,5 @@
-import { models, partners } from "@/lib/built-with";
-import { features } from "@/lib/features";
-import { contactEmail, legalUpdated, repoUrl, siteUrl } from "@/lib/site";
+import { models, partners } from "@/lib/content/built-with";
+import { features } from "@/lib/content/features";
 import {
   categories,
   detailOf,
@@ -9,7 +8,8 @@ import {
   solutionPath,
   solutions,
   solutionsIn,
-} from "@/lib/solutions";
+} from "@/lib/content/solutions";
+import { contactEmail, legalUpdated, repoUrl, siteUrl } from "@/lib/site";
 
 // Plain Markdown versions of the public pages, for agents and tools that would
 // rather read text than HTML. They come from the same data as the pages, so
@@ -58,7 +58,9 @@ function home() {
     "",
     "## What it does",
     "",
-    ...features.map(({ description, title }) => `- **${title}.** ${description}`),
+    ...features.map(
+      ({ description, title }) => `- **${title}.** ${description}`
+    ),
     "",
     "## Find out more",
     "",
@@ -316,4 +318,4 @@ export function markdownPages() {
   ];
 }
 
-export { md, page, TAGLINE, SUMMARY };
+export { md, page, SUMMARY, TAGLINE };

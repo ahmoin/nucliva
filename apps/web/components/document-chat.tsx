@@ -27,7 +27,7 @@ import {
   SourcesTrigger,
 } from "@/components/ai-elements/sources";
 import { ChatMarkdown } from "@/components/chat-markdown";
-import type { Source } from "@/lib/tavily";
+import type { Source } from "@/lib/ai/tavily";
 
 // A conversation is a tree of messages. Every message points at the one it
 // answers, so editing an earlier message or branching from it starts another

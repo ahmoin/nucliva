@@ -2,8 +2,8 @@ import { db } from "@workspace/db";
 import { documents } from "@workspace/db/schema";
 import { and, eq } from "drizzle-orm";
 import { headers } from "next/headers";
-import { auth } from "@/lib/auth";
-import { ingestText } from "@/lib/embeddings";
+import { ingestText } from "@/lib/ai/embeddings";
+import { auth } from "@/lib/auth/server";
 import { limitGuest } from "@/lib/rate-limit";
 
 export async function POST(request: Request) {

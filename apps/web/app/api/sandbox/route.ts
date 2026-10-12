@@ -1,9 +1,9 @@
 import { headers } from "next/headers";
 import { after } from "next/server";
-import { auth } from "@/lib/auth";
+import { auth } from "@/lib/auth/server";
+import { detailOf, findSolution } from "@/lib/content/solutions";
 import { allow, HOUR } from "@/lib/rate-limit";
-import { createSandbox, embedAll } from "@/lib/sandbox";
-import { detailOf, findSolution } from "@/lib/solutions";
+import { createSandbox, embedAll } from "@/lib/sandbox/create";
 
 // Opens a solution for someone to try. A visitor without an account becomes a
 // guest first, and everyone gets a document of notes with the request for that
@@ -44,7 +44,10 @@ export async function POST(request: Request) {
   }
 
   if (!userId) {
-    return Response.json({ error: "Could not start a sandbox" }, { status: 500 });
+    return Response.json(
+      { error: "Could not start a sandbox" },
+      { status: 500 }
+    );
   }
 
   const { documentId, embeds } = await createSandbox({
@@ -54,7 +57,10 @@ export async function POST(request: Request) {
   });
 
   if (!documentId) {
-    return Response.json({ error: "Could not start a sandbox" }, { status: 500 });
+    return Response.json(
+      { error: "Could not start a sandbox" },
+      { status: 500 }
+    );
   }
 
   if (embeds.length > 0) {

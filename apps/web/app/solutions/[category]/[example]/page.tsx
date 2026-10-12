@@ -17,7 +17,7 @@ import {
   solutionPath,
   solutions,
   solutionsIn,
-} from "@/lib/solutions";
+} from "@/lib/content/solutions";
 
 type Props = { params: Promise<{ category: string; example: string }> };
 

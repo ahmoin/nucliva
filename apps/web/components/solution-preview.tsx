@@ -1,5 +1,5 @@
 import { cn } from "@workspace/ui/lib/utils";
-import type { Kind } from "@/lib/solutions";
+import type { Kind } from "@/lib/content/solutions";
 
 const line = "h-1.5 bg-foreground/15";
 const added = "bg-emerald-500/60";

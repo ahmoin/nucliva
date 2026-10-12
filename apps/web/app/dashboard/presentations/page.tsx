@@ -4,7 +4,7 @@ import { EmptyState } from "@/components/empty-state";
 import { FileTable } from "@/components/file-table";
 import { NewDocButton } from "@/components/new-doc-button";
 import { PageHeader } from "@/components/page-header";
-import { getUserId, listDocuments } from "@/lib/documents";
+import { getUserId, listDocuments } from "@/lib/db/documents";
 
 export default async function Page() {
   const presentations = await listDocuments(await getUserId(), {

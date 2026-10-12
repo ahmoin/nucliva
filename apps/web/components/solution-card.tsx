@@ -12,7 +12,7 @@ import {
   type Kind,
   type Solution,
   solutionPath,
-} from "@/lib/solutions";
+} from "@/lib/content/solutions";
 
 export const kindIcons: Record<Kind, typeof FileTextIcon> = {
   Doc: FileTextIcon,

@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "auth:generate": "pnpm dlx @better-auth/cli@latest generate --config lib/auth.ts --output ../../packages/db/src/schema/auth.ts -y",
+    "auth:generate": "pnpm dlx @better-auth/cli@latest generate --config lib/auth/server.ts --output ../../packages/db/src/schema/auth.ts -y",
     "build": "next build",
     "dev": "next dev",
     "start": "next start",

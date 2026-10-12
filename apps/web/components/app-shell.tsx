@@ -12,6 +12,7 @@ import {
 } from "@workspace/ui/components/sidebar";
 import { AppSidebar } from "@/components/app-sidebar";
 import { Omnibar } from "@/components/omnibar";
+import { SandboxTour } from "@/components/sandbox-tour";
 
 export function AppShell({
   children,
@@ -46,6 +47,7 @@ export function AppShell({
         <div className="flex min-w-0 flex-1 flex-col gap-4 p-4">{children}</div>
       </SidebarInset>
       <Omnibar />
+      <SandboxTour />
     </SidebarProvider>
   );
 }

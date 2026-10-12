@@ -8,7 +8,7 @@ import { Hotkeys } from "@/components/hotkeys";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader, siteHotkeys } from "@/components/site-header";
 import { SolutionCard } from "@/components/solution-card";
-import { categories, findCategory, solutionsIn } from "@/lib/solutions";
+import { categories, findCategory, solutionsIn } from "@/lib/content/solutions";
 
 type Props = { params: Promise<{ category: string }> };
 

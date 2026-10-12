@@ -2,7 +2,7 @@ import { db } from "@workspace/db";
 import { documents } from "@workspace/db/schema";
 import { and, eq } from "drizzle-orm";
 import { headers } from "next/headers";
-import { auth } from "@/lib/auth";
+import { auth } from "@/lib/auth/server";
 
 export async function POST(
   _request: Request,

@@ -3,7 +3,7 @@ import { documents } from "@workspace/db/schema";
 import { and, eq } from "drizzle-orm";
 import { headers } from "next/headers";
 import { z } from "zod";
-import { auth } from "@/lib/auth";
+import { auth } from "@/lib/auth/server";
 
 const updateSchema = z.object({
   content: z.record(z.string(), z.unknown()).optional(),

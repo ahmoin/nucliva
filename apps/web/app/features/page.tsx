@@ -18,7 +18,7 @@ import { Hotkeys } from "@/components/hotkeys";
 import { Reveal } from "@/components/reveal";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader, siteHotkeys } from "@/components/site-header";
-import { features } from "@/lib/features";
+import { features } from "@/lib/content/features";
 
 export const metadata: Metadata = {
   description:
@@ -29,7 +29,7 @@ export const metadata: Metadata = {
 const enter =
   "motion-safe:fade-in motion-safe:slide-in-from-bottom-4 motion-safe:animate-in motion-safe:fill-mode-both motion-safe:duration-700 motion-safe:ease-out";
 
-// The icon for each feature in lib/features.ts, in the same order.
+// The icon for each feature in lib/content/features.ts, in the same order.
 const icons = [
   MicrophoneStageIcon,
   GlobeIcon,

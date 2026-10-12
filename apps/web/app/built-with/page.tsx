@@ -7,7 +7,7 @@ import { type Partner, PartnerLogo } from "@/components/partner-logo";
 import { Reveal } from "@/components/reveal";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader, siteHotkeys } from "@/components/site-header";
-import { models, partners } from "@/lib/built-with";
+import { models, partners } from "@/lib/content/built-with";
 import { repoUrl } from "@/lib/site";
 
 export const metadata: Metadata = {
@@ -19,7 +19,7 @@ export const metadata: Metadata = {
 const enter =
   "motion-safe:fade-in motion-safe:slide-in-from-bottom-4 motion-safe:animate-in motion-safe:fill-mode-both motion-safe:duration-700 motion-safe:ease-out";
 
-// The logo for each partner in lib/built-with.ts, by name.
+// The logo for each partner in lib/content/built-with.ts, by name.
 const logos: Record<string, Partner> = {
   LangChain: {
     darkLogo: "/logos/langchain-dark.svg",

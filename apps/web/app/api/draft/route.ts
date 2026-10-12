@@ -1,9 +1,9 @@
 import { headers } from "next/headers";
-import { auth } from "@/lib/auth";
+import { wantsCitations, wantsResearch } from "@/lib/ai/research-intent";
+import { suggestEdits, type Turn } from "@/lib/ai/style-engine";
+import type { Source } from "@/lib/ai/tavily";
+import { auth } from "@/lib/auth/server";
 import { limitGuest } from "@/lib/rate-limit";
-import { wantsCitations, wantsResearch } from "@/lib/research-intent";
-import { suggestEdits, type Turn } from "@/lib/style-engine";
-import type { Source } from "@/lib/tavily";
 
 export async function POST(request: Request) {
   const session = await auth.api.getSession({ headers: await headers() });

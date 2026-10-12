@@ -22,7 +22,7 @@
     {
       "includes": [
         "packages/db/**",
-        "apps/web/lib/auth.ts",
+        "apps/web/lib/auth/server.ts",
         "apps/web/app/api/auth/**"
       ],
       "linter": {

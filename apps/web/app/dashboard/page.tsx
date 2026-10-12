@@ -16,15 +16,15 @@ import {
 import { Textarea } from "@workspace/ui/components/textarea";
 import Link from "next/link";
 import { AppShell } from "@/components/app-shell";
+import { EmptyState } from "@/components/empty-state";
 import { FileTable } from "@/components/file-table";
 import { PageHeader } from "@/components/page-header";
-import { EmptyState } from "@/components/empty-state";
 import { QuickActionCard } from "@/components/quick-action-card";
 import {
   countStyleSamples,
   getUserId,
   listDocuments,
-} from "@/lib/documents";
+} from "@/lib/db/documents";
 
 const quickActions = [
   {

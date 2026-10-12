@@ -10,9 +10,16 @@ import { useCallback, useState } from "react";
 export function TrySandboxButton({
   category,
   example,
+  hint = true,
+  label = "Try it now",
+  variant = "default",
 }: {
   category: string;
   example: string;
+  // Whether the line under the button, or what went wrong, is shown.
+  hint?: boolean;
+  label?: string;
+  variant?: "default" | "outline";
 }) {
   const router = useRouter();
   const [busy, setBusy] = useState(false);
@@ -44,6 +51,12 @@ export function TrySandboxButton({
     }
   }, [category, example, router]);
 
+  const caption = busy ? "Setting up your workspace" : label;
+  // What goes under the button: what went wrong, or what to expect.
+  const note =
+    error ??
+    (hint ? "No sign up needed. Your own workspace, ready in a second." : null);
+
   return (
     <div className="flex flex-col gap-2">
       <Button
@@ -51,17 +64,16 @@ export function TrySandboxButton({
         disabled={busy}
         onClick={start}
         size="lg"
+        variant={variant}
       >
-        {busy ? "Setting up your workspace" : "Try it now"}
+        {caption}
         {busy ? (
           <CircleNotchIcon className="animate-spin" />
         ) : (
           <ArrowRightIcon />
         )}
       </Button>
-      <p className="text-muted-foreground text-xs">
-        {error ?? "No sign up needed. Your own workspace, ready in a second."}
-      </p>
+      {note ? <p className="text-muted-foreground text-xs">{note}</p> : null}
     </div>
   );
 }

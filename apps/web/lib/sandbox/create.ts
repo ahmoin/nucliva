@@ -1,15 +1,15 @@
 import { db } from "@workspace/db";
 import { documents, styleSamples } from "@workspace/db/schema";
 import { and, eq } from "drizzle-orm";
-import { ingestText } from "@/lib/embeddings";
-import { fillWorkspace } from "@/lib/sandbox-fill";
+import { ingestText } from "@/lib/ai/embeddings";
+import type { Solution } from "@/lib/content/solutions";
 import {
   type SandboxDeck,
   type SandboxSheet,
   type Workspace,
   workspaces,
-} from "@/lib/sandbox-data";
-import type { Solution } from "@/lib/solutions";
+} from "@/lib/sandbox/data";
+import { fillWorkspace } from "@/lib/sandbox/fill";
 
 const DAY = 24 * 60 * 60 * 1000;
 
@@ -101,7 +101,11 @@ export function docContent(title: string, body: string[]) {
 
 // The notes a guest writes from, in the document they land in.
 const notesContent = (title: string, notes: string[]) =>
-  docContent(title, ["Rough notes to write from:", ...notes.map((n) => `- ${n}`), ""]);
+  docContent(title, [
+    "Rough notes to write from:",
+    ...notes.map((n) => `- ${n}`),
+    "",
+  ]);
 
 const textLayer = (
   name: string,
@@ -148,7 +152,12 @@ function deckContent(deck: SandboxDeck) {
       id: crypto.randomUUID(),
       layers: [
         accentLayer(),
-        textLayer("Title", slide.title, { height: 80, size: 52, weight: 700, y: 150 }),
+        textLayer("Title", slide.title, {
+          height: 80,
+          size: 52,
+          weight: 700,
+          y: 150,
+        }),
         ...slide.points.map((point, index) =>
           textLayer(`Point ${index + 1}`, point, {
             height: 56,
@@ -207,7 +216,9 @@ async function seedWorkspace(
     const [existing] = await db
       .select({ id: documents.id })
       .from(documents)
-      .where(and(eq(documents.userId, userId), eq(documents.title, first.title)))
+      .where(
+        and(eq(documents.userId, userId), eq(documents.title, first.title))
+      )
       .limit(1);
 
     if (existing) {

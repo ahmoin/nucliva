@@ -34,8 +34,8 @@ import {
   TaskTrigger,
 } from "@/components/ai-elements/task";
 import {
-  alternatives,
   ARRIVE,
+  alternatives,
   ChatMessage,
   endOf,
   lineOf,
@@ -50,9 +50,9 @@ import {
   $resolve,
   useChanges,
 } from "@/components/document-suggestions";
-import { wantsCitations, wantsResearch } from "@/lib/research-intent";
-import type { Edit } from "@/lib/style-engine";
-import type { Source } from "@/lib/tavily";
+import { wantsCitations, wantsResearch } from "@/lib/ai/research-intent";
+import type { Edit } from "@/lib/ai/style-engine";
+import type { Source } from "@/lib/ai/tavily";
 
 const draftStarters = [
   { label: "Research", prompt: "Research " },
@@ -480,7 +480,9 @@ export function DraftBar({
                                   {/* The sites that were found come in one after the other. */}
                                   <TaskItemFile
                                     className={`fill-mode-backwards ${ARRIVE}`}
-                                    style={{ animationDelay: `${index * 60}ms` }}
+                                    style={{
+                                      animationDelay: `${index * 60}ms`,
+                                    }}
                                   >
                                     <SiteIcon url={source.url} />
                                     {new URL(source.url).hostname}
@@ -633,7 +635,11 @@ export function DraftBar({
           size="icon-sm"
           type="submit"
         >
-          {generating ? <SparkleIcon className="animate-pulse" /> : <ArrowUpIcon />}
+          {generating ? (
+            <SparkleIcon className="animate-pulse" />
+          ) : (
+            <ArrowUpIcon />
+          )}
         </Button>
       </form>
     </div>

@@ -4,7 +4,7 @@ import { and, eq } from "drizzle-orm";
 import { notFound } from "next/navigation";
 import { AppShell } from "@/components/app-shell";
 import { type Slide, SlidesEditor } from "@/components/slides-editor";
-import { getUserId } from "@/lib/documents";
+import { getUserId } from "@/lib/db/documents";
 
 export default async function Page({
   params,

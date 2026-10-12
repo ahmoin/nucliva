@@ -6,7 +6,7 @@ import { notFound } from "next/navigation";
 import { AppShell } from "@/components/app-shell";
 import { DocumentEditor } from "@/components/document-editor";
 import { SandboxBanner } from "@/components/sandbox-banner";
-import { auth } from "@/lib/auth";
+import { auth } from "@/lib/auth/server";
 
 export default async function Page({
   params,
@@ -35,6 +35,7 @@ export default async function Page({
       {session.user.isAnonymous ? <SandboxBanner /> : null}
       <DocumentEditor
         content={doc.content as Record<string, unknown>}
+        guest={session.user.isAnonymous === true}
         id={doc.id}
         title={doc.title}
         updatedAt={doc.updatedAt.getTime()}

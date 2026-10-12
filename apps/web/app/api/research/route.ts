@@ -1,7 +1,7 @@
 import { headers } from "next/headers";
-import { auth } from "@/lib/auth";
+import { searchWeb } from "@/lib/ai/tavily";
+import { auth } from "@/lib/auth/server";
 import { limitGuest } from "@/lib/rate-limit";
-import { searchWeb } from "@/lib/tavily";
 
 // The search a research draft is written from. It is its own request so the
 // editor can show what was found while the draft is still being written.

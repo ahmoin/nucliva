@@ -3,7 +3,7 @@ import { RecursiveCharacterTextSplitter } from "@langchain/textsplitters";
 import { db } from "@workspace/db";
 import { vectorEmbeddings } from "@workspace/db/schema";
 import { and, cosineDistance, eq } from "drizzle-orm";
-import { NEBIUS_BASE_URL } from "@/lib/nebius";
+import { NEBIUS_BASE_URL } from "@/lib/ai/nebius";
 
 const EMBEDDING_DIMENSIONS = 1536;
 
