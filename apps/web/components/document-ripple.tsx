@@ -403,11 +403,13 @@ class Ripple {
       }
 
       this.running += 1;
-      this.read(job).finally(() => {
-        this.running -= 1;
-        this.reading.delete(job.hash);
-        this.pump();
-      });
+      this.read(job)
+        .catch(() => undefined)
+        .finally(() => {
+          this.running -= 1;
+          this.reading.delete(job.hash);
+          this.pump();
+        });
     }
   }
 
@@ -526,7 +528,7 @@ class Ripple {
           this.show.hint({ key: edit.key, kind: kindOf(fact?.unit ?? "") });
         }
 
-        this.rewrite(edit, run, outcome.touched);
+        this.rewrite(edit, run, outcome.touched).catch(() => undefined);
       },
     });
   }

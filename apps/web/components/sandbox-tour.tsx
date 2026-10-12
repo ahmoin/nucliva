@@ -144,7 +144,7 @@ const steps: Step[] = [
   },
   {
     ask: "Click Accept All, or accept or reject each change",
-    body: "Every change is in your document in green and red, and the chat tells you what it did. Nothing goes in until you say so, and you can take each one or all of them.",
+    body: "Every change is in your document in green and red, and the chat tells you what it did. Nothing goes in until you say so, and you can take each one or all of them. Each change has its own Accept and Reject in the page margin, or step through them with the arrows in the chat. Drag this card by its top if it is in the way.",
     done: ({ changes, start }) => changes < start.changes,
     orb: "weaving",
     target: reviewArea,
@@ -577,6 +577,58 @@ function TourCard({
   // being pointed at.
   top: boolean;
 }) {
+  const card = useRef<HTMLElement>(null);
+  const [offset, setOffset] = useState({ x: 0, y: 0 });
+  const grab = useRef<{
+    box: DOMRect;
+    from: { x: number; y: number };
+    offset: { x: number; y: number };
+  } | null>(null);
+
+  // The card can be dragged by its top, out of the way of whatever it covers.
+  const onGrabStart = (event: React.PointerEvent<HTMLDivElement>) => {
+    if ((event.target as HTMLElement).closest("button")) {
+      return;
+    }
+
+    const box = card.current?.getBoundingClientRect();
+
+    if (!box) {
+      return;
+    }
+
+    event.currentTarget.setPointerCapture(event.pointerId);
+    grab.current = {
+      box,
+      from: { x: event.clientX, y: event.clientY },
+      offset,
+    };
+  };
+
+  const onGrabMove = (event: React.PointerEvent<HTMLDivElement>) => {
+    const start = grab.current;
+
+    if (!start) {
+      return;
+    }
+
+    // Kept on the screen, so that it cannot be lost.
+    const dx = Math.min(
+      Math.max(event.clientX - start.from.x, -start.box.left),
+      window.innerWidth - start.box.right
+    );
+    const dy = Math.min(
+      Math.max(event.clientY - start.from.y, -start.box.top),
+      window.innerHeight - start.box.bottom
+    );
+
+    setOffset({ x: start.offset.x + dx, y: start.offset.y + dy });
+  };
+
+  const onGrabEnd = () => {
+    grab.current = null;
+  };
+
   return (
     <section
       aria-label="Sandbox tour"
@@ -584,10 +636,17 @@ function TourCard({
         "motion-safe:slide-in-from-bottom-4 motion-safe:fade-in-0 fixed right-6 z-[70] flex w-[min(23rem,calc(100vw-3rem))] flex-col gap-4 border bg-popover p-5 text-popover-foreground shadow-2xl motion-safe:animate-in motion-safe:duration-300 motion-safe:ease-[cubic-bezier(0.23,1,0.32,1)]",
         top ? "top-20" : "bottom-6"
       )}
-      key={index}
+      ref={card}
+      style={{ translate: `${offset.x}px ${offset.y}px` }}
     >
       <div className={nudge > 0 ? "motion-safe:animate-nudge" : ""} key={nudge}>
-        <div className="mb-4 flex items-center justify-between gap-3">
+        <div
+          className="-mx-5 -mt-5 mb-4 flex cursor-grab touch-none items-center justify-between gap-3 px-5 pt-5 pb-1 active:cursor-grabbing"
+          onPointerCancel={onGrabEnd}
+          onPointerDown={onGrabStart}
+          onPointerMove={onGrabMove}
+          onPointerUp={onGrabEnd}
+        >
           <Progress index={index} />
           <button
             aria-label="Close the tour"
@@ -749,6 +808,11 @@ function Tour() {
   }, [index, next]);
   const flash = useCallback(() => setNudge((count) => count + 1), []);
 
+  // A new step starts still. The card is made again for each one, and would
+  // shake again if the last step was ever shaken.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: runs when the step changes
+  useEffect(() => setNudge(0), [index]);
+
   // A step that has been done moves on by itself, after a moment to see it.
   useEffect(() => {
     if (!complete) {
@@ -790,6 +854,7 @@ function Tour() {
       <TourCard
         complete={complete}
         index={index}
+        key={index}
         nudge={nudge}
         onBack={back}
         onClose={close}
