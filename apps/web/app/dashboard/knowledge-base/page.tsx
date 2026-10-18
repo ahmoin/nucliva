@@ -100,7 +100,7 @@ export default async function Page() {
         description="Connect the places your knowledge lives so drafts can draw on it."
         title="Knowledge Base"
       />
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="grid gap-4 @xl:grid-cols-2 @5xl:grid-cols-4">
         {connectors.map((connector) => (
           <Card key={connector.id} size="sm">
             <CardHeader>

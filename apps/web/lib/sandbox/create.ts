@@ -146,7 +146,7 @@ const accentLayer = () => ({
 
 // A deck in the shape the slide editor saves: an accent bar, a title and a
 // line for each point.
-function deckContent(deck: SandboxDeck) {
+export function deckContent(deck: Pick<SandboxDeck, "slides">) {
   return {
     slides: deck.slides.map((slide) => ({
       id: crypto.randomUUID(),
@@ -172,7 +172,7 @@ function deckContent(deck: SandboxDeck) {
 }
 
 // A sheet in the shape the spreadsheet saves, with the first row as a header.
-function sheetContent(sheet: SandboxSheet) {
+export function sheetContent(sheet: Pick<SandboxSheet, "rows">) {
   const celldata = sheet.rows.flatMap((row, r) =>
     row.map((value, c) => ({
       c,

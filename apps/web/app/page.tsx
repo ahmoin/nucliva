@@ -8,11 +8,14 @@ import { Chip } from "@/components/chip";
 import { HeroDiagram } from "@/components/hero-diagram";
 import { HeroPreview } from "@/components/hero-preview";
 import { Hotkeys, KeyHint } from "@/components/hotkeys";
+import { ResearchPreview } from "@/components/research-preview";
 import { Reveal } from "@/components/reveal";
 import { SectionMark } from "@/components/section-mark";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader, siteHotkeys } from "@/components/site-header";
 import { SolutionPreview } from "@/components/solution-preview";
+import { StylePreview } from "@/components/style-preview";
+import { SuitePreview } from "@/components/suite-preview";
 import { SolutionsShowcase } from "@/components/solutions-showcase";
 import { TrySandboxButton } from "@/components/try-sandbox-button";
 import { auth } from "@/lib/auth/server";
@@ -73,37 +76,23 @@ const showcases = [
   {
     description:
       "Upload a few things you have written and Nucliva maps your tone, rhythm and word choice. Every draft after that sounds like you, not like a chatbot.",
+    // Each section shows the part of the app it is about.
+    demo: "style",
     lane: "left",
-    preview: [
-      { name: "Sentence length", value: "Short, punchy" },
-      { name: "Tone", value: "Direct, warm" },
-      { name: "Vocabulary", value: "Plain, no jargon" },
-      { name: "Voice match", value: "96%" },
-    ],
     title: ["It learns", "how you write"],
   },
   {
     description:
       "Ask for anything and Nucliva searches the live web, pulls in the facts that matter and cites every source so you can check the work.",
+    demo: "research",
     lane: "center",
-    preview: [
-      { name: "nebius.com", value: "Cited" },
-      { name: "nvidia.com", value: "Cited" },
-      { name: "tavily.com", value: "Cited" },
-      { name: "Sources", value: "3 of 3" },
-    ],
     title: ["It researches", "so you do not have to"],
   },
   {
     description:
       "Turn rough notes into a polished doc, a set of slides or an organized sheet. One workspace, one voice, no copy and paste between tools.",
+    demo: "suite",
     lane: "right",
-    preview: [
-      { name: "Launch update", value: "Doc" },
-      { name: "Q3 board slides", value: "Slides" },
-      { name: "Competitor sheet", value: "Sheet" },
-      { name: "Files", value: "3" },
-    ],
     title: ["Docs, slides and sheets", "in one place"],
   },
 ] as const;
@@ -331,20 +320,10 @@ export default async function Page() {
             </Reveal>
             <Reveal className="mx-auto mt-14 w-full max-w-2xl md:mt-20">
               <div className="border bg-card/50 p-2 shadow-[0_0_60px_-30px_var(--primary)] transition-colors hover:bg-card">
-                <div className="flex flex-col divide-y border bg-background">
-                  {item.preview.map((row, rowIndex) => (
-                    <div
-                      className={`flex items-center justify-between gap-4 px-5 py-4 text-sm transition-colors hover:bg-muted/50 ${rowIndex === item.preview.length - 1 ? "bg-primary/5" : ""}`}
-                      key={row.name}
-                    >
-                      <span className="text-muted-foreground">{row.name}</span>
-                      <span
-                        className={`font-medium ${rowIndex === item.preview.length - 1 ? "font-semibold text-primary" : ""}`}
-                      >
-                        {row.value}
-                      </span>
-                    </div>
-                  ))}
+                <div className="flex flex-col border bg-background">
+                  {item.demo === "style" ? <StylePreview /> : null}
+                  {item.demo === "research" ? <ResearchPreview /> : null}
+                  {item.demo === "suite" ? <SuitePreview /> : null}
                 </div>
               </div>
             </Reveal>

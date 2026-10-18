@@ -1,11 +1,14 @@
 // Bakes scripts/opengraph-image.tsx into app/opengraph-image.png, which is the
-// file Next.js serves. Run it from apps/web after changing the design:
+// file Next.js serves, and scripts/thumbnail-image.tsx into
+// public/brand/thumbnail.png, the Devpost thumbnail. Run it from apps/web after
+// changing either design:
 //
 //   pnpm dlx tsx scripts/render-opengraph.mts
 import { writeFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import { fileURLToPath } from "node:url";
 import Image from "./opengraph-image";
+import Thumbnail from "./thumbnail-image";
 
 // The design file uses JSX without importing React, as the app compiles it, so
 // give it React to use here.
@@ -13,10 +16,15 @@ import Image from "./opengraph-image";
   "react"
 );
 
-const response = Image() as Response;
-const target = fileURLToPath(
-  new URL("../app/opengraph-image.png", import.meta.url)
-);
+const renders: [() => unknown, string][] = [
+  [Image, "../app/opengraph-image.png"],
+  [Thumbnail, "../public/brand/thumbnail.png"],
+];
 
-writeFileSync(target, Buffer.from(await response.arrayBuffer()));
-console.log("Wrote", target);
+for (const [draw, path] of renders) {
+  const response = draw() as Response;
+  const target = fileURLToPath(new URL(path, import.meta.url));
+
+  writeFileSync(target, Buffer.from(await response.arrayBuffer()));
+  console.log("Wrote", target);
+}

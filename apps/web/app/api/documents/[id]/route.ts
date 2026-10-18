@@ -7,6 +7,8 @@ import { auth } from "@/lib/auth/server";
 
 const updateSchema = z.object({
   content: z.record(z.string(), z.unknown()).optional(),
+  // What an agent suggested is only ever settled, never written from here.
+  pending: z.null().optional(),
   starred: z.boolean().optional(),
   title: z.string().min(1).max(500).optional(),
   trashed: z.boolean().optional(),
@@ -28,13 +30,14 @@ export async function PATCH(
     return Response.json({ error: "Invalid body" }, { status: 400 });
   }
 
-  const { content, starred, title, trashed } = parsed.data;
+  const { content, pending, starred, title, trashed } = parsed.data;
   const edited = content !== undefined || title !== undefined;
   const { id } = await params;
   const [updated] = await db
     .update(documents)
     .set({
       ...(content !== undefined && { content }),
+      ...(pending === null && { pending: null }),
       ...(starred !== undefined && { starredAt: starred ? new Date() : null }),
       ...(title !== undefined && { title }),
       ...(trashed !== undefined && { deletedAt: trashed ? new Date() : null }),

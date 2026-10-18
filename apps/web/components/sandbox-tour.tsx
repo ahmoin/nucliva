@@ -11,7 +11,14 @@ import { cn } from "@workspace/ui/lib/utils";
 import { BorderBeam } from "border-beam";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useCallback, useEffect, useRef, useState } from "react";
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 import { type OrbState, ThinkingOrb } from "thinking-orbs";
 import {
   type TourState,
@@ -25,7 +32,10 @@ import { authClient } from "@/lib/auth/client";
 // has been done, and the later steps send them around the rest of the app. It
 // can be skipped, closed and opened again, so nobody is ever stuck in it.
 
-const STORAGE_KEY = "nucliva-tour";
+const SANDBOX_KEY = "nucliva-tour";
+const WELCOME_KEY = "nucliva-welcome-tour";
+// How long an account counts as new, for the tour that sets it up.
+const NEW_FOR = 14 * 24 * 60 * 60 * 1000;
 const DOCUMENT = /^\/dashboard\/(docs|sheets|presentations)\/[^/]+$/;
 const SHEET_OR_DECK = /\/dashboard\/(sheets|presentations)\//;
 const PADDING = 8;
@@ -37,7 +47,7 @@ interface Context extends TourState {
   lastDoc: string;
   path: string;
   // What things were like when this step began.
-  start: { changes: number; path: string; ripple: number; step: number };
+  start: Omit<TourState, "example"> & { path: string; step: number };
 }
 
 type Target = string | ((context: Context) => DOMRect | null);
@@ -55,6 +65,8 @@ interface Step {
   focus?: string;
   // A big orb at the top of the card, for the first and last steps.
   hero?: OrbState;
+  // A link to sign up under the text, for a guest at the end.
+  signup?: boolean;
   // The look of the small orb beside what to do. Each step has its own, so
   // that waiting for you does not look the same every time.
   orb?: OrbState;
@@ -127,9 +139,19 @@ const reviewArea = () =>
 const sidebarLink = (href: string) => () =>
   rectOf(`a[href="${href}"]`) ?? rectOf('[data-sidebar="trigger"]');
 
-const steps: Step[] = [
+// The agents page, where a whole suite of files is asked for at once.
+const agentsStep: Step = {
+  ask: "Open Agents",
+  body: "Ask once, and an agent researches the web, then writes a doc, a sheet and a deck together, all in your voice and with the same numbers. It works in the background on Nebius, and the files arrive as suggestions you accept.",
+  done: ({ path }) => path === "/dashboard/agents",
+  orb: "connecting",
+  target: sidebarLink("/dashboard/agents"),
+  title: "Hand off a whole project",
+};
+
+const sandboxSteps: Step[] = [
   {
-    body: "A real workspace for this line of work: files, a deck, a sheet and writing samples. There are five things worth trying, and it takes about two minutes. You do each one, and Nucliva waits for you.",
+    body: "A real workspace for this line of work: files, a deck, a sheet and writing samples. There are a few things worth trying, and it takes about three minutes. You do each one, and Nucliva waits for you.",
     hero: "weaving",
     title: "Welcome to the sandbox",
   },
@@ -193,6 +215,7 @@ const steps: Step[] = [
     target: otherFile,
     title: "Open another file",
   },
+  agentsStep,
   {
     ask: "Open Style Profile",
     body: "This is where Nucliva's voice comes from: the writing samples it matches. Add your own and every draft sounds more like you.",
@@ -212,7 +235,87 @@ const steps: Step[] = [
   {
     body: "You asked, reviewed, kept a fact in step and looked around. Everything here is yours to keep: sign up and it all moves to your account.",
     hero: "breathing",
+    signup: true,
     title: "That is the loop",
+  },
+];
+
+// Makes a doc with a first request typed in, and opens it.
+async function startDoc() {
+  const response = await fetch("/api/documents", {
+    body: JSON.stringify({ kind: "doc" }),
+    headers: { "Content-Type": "application/json" },
+    method: "POST",
+  });
+
+  if (!response.ok) {
+    return;
+  }
+
+  const { id }: { id: string } = await response.json();
+  const prompt = encodeURIComponent(
+    "Write a short note to my team about what I am working on this week"
+  );
+
+  window.location.assign(`/dashboard/docs/${id}?prompt=${prompt}`);
+}
+
+// For a new account, which starts empty: teach it your voice, try the agent,
+// then write and review in a doc of your own.
+const welcomeSteps: Step[] = [
+  {
+    body: "Nucliva writes in your voice and keeps your facts straight. This takes about three minutes: you set up your voice, try an agent, then write something. You do each step, and Nucliva waits for you.",
+    hero: "weaving",
+    title: "Welcome to Nucliva",
+  },
+  {
+    ask: "Open Style Profile",
+    body: "Everything Nucliva writes is matched to how you write. It learns that from samples of your own writing.",
+    done: ({ path }) => path === "/dashboard/style-profile",
+    orb: "listening",
+    target: sidebarLink("/dashboard/style-profile"),
+    title: "Teach it your voice",
+  },
+  {
+    ask: "Paste something you wrote, then click Analyze style",
+    body: "An email, a post or a report you wrote works well. The more you add, the closer drafts sound to you. Skip this for now if you have nothing to hand.",
+    done: ({ samples, start }) => samples > start.samples,
+    focus: '[aria-label="Writing sample"]',
+    orb: "listening",
+    target: '[data-tour="sample"]',
+    title: "Add a writing sample",
+  },
+  agentsStep,
+  {
+    ask: "Pick an example or write your own, then click Run agent",
+    body: "Watch each step as it happens. It takes a few minutes, so you can carry on with the tour while it works. The files show up here when they are ready.",
+    done: ({ runs, start }) => runs > start.runs,
+    focus: '[aria-label="What should the agent make?"]',
+    orb: "solving",
+    target: '[data-tour="new-suite"]',
+    title: "Run your first agent",
+  },
+  {
+    action: { label: "Create a doc", run: startDoc },
+    ask: "Click the button to make a doc",
+    body: "Now write something yourself. This makes a new doc with a first request typed in for you.",
+    // The new doc opens with the page loaded again, so any doc open counts.
+    done: ({ path }) => DOCUMENT.test(path),
+    orb: "working",
+    title: "Write in a doc",
+  },
+  {
+    ...(sandboxSteps[1] as Step),
+    body: "A first request is typed in for you, and you can change it. Send it, and Nucliva writes it in your voice. On a keyboard, Enter works too.",
+  },
+  sandboxSteps[2] as Step,
+  sandboxSteps[3] as Step,
+  sandboxSteps[4] as Step,
+  sandboxSteps[5] as Step,
+  {
+    body: "You taught it your voice, handed off a project and kept a fact in step. The Tour button in the corner brings this back any time.",
+    hero: "breathing",
+    title: "You are set up",
   },
 ];
 
@@ -311,29 +414,42 @@ function useBox(step: Step, context: Context, active: boolean) {
   return box;
 }
 
-const read = () => {
+const read = (key: string, count: number) => {
   try {
-    const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) ?? "null") as {
+    const saved = JSON.parse(localStorage.getItem(key) ?? "null") as {
       done?: boolean;
       step?: number;
     } | null;
 
     return {
       done: saved?.done === true,
-      step: Math.min(Math.max(0, saved?.step ?? 0), steps.length - 1),
+      step: Math.min(Math.max(0, saved?.step ?? 0), count - 1),
     };
   } catch {
     return { done: false, step: 0 };
   }
 };
 
-const remember = (value: { done: boolean; step: number }) => {
+const remember = (key: string, value: { done: boolean; step: number }) => {
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(value));
+    localStorage.setItem(key, JSON.stringify(value));
   } catch {
     // The tour still works. It just comes back next time.
   }
 };
+
+// Whether this browser has been through the sandbox tour, so someone who signs
+// up from the sandbox is not walked through it all again.
+const sawSandboxTour = () => {
+  try {
+    return localStorage.getItem(SANDBOX_KEY) !== null;
+  } catch {
+    return false;
+  }
+};
+
+// The steps of the tour that is open.
+const Steps = createContext<Step[]>([]);
 
 const dim = "bg-black/65";
 const move =
@@ -451,6 +567,8 @@ function Spotlight({
 
 // How far along the tour is, as a row of bars.
 function Progress({ index }: { index: number }) {
+  const steps = useContext(Steps);
+
   return (
     <div aria-hidden className="flex flex-1 gap-1">
       {steps.map((item, at) => (
@@ -521,6 +639,7 @@ function CardActions({
   onSkip: () => void;
   step: Step;
 }) {
+  const steps = useContext(Steps);
   const last = index === steps.length - 1;
   const gated = Boolean(step.done);
 
@@ -577,6 +696,7 @@ function TourCard({
   // being pointed at.
   top: boolean;
 }) {
+  const steps = useContext(Steps);
   const card = useRef<HTMLElement>(null);
   const [offset, setOffset] = useState({ x: 0, y: 0 });
   const grab = useRef<{
@@ -687,7 +807,7 @@ function TourCard({
             orb={step.orb ?? "breathing"}
           />
         ) : null}
-        {index === steps.length - 1 ? (
+        {step.signup ? (
           <p className="mt-4 text-muted-foreground text-xs">
             <Link className="text-foreground underline" href="/signup">
               Sign up
@@ -708,16 +828,25 @@ function TourCard({
   );
 }
 
-function Tour() {
+function Tour({
+  storageKey,
+  steps,
+}: {
+  // Where this browser keeps how far it got.
+  storageKey: string;
+  steps: Step[];
+}) {
   const path = usePathname();
   const state = useTourState();
   const [ready, setReady] = useState(false);
   const [open, setOpen] = useState(true);
   const [index, setIndex] = useState(0);
-  const [start, setStart] = useState({
+  const [start, setStart] = useState<Context["start"]>({
     changes: 0,
     path: "",
     ripple: 0,
+    runs: 0,
+    samples: 0,
     step: -1,
   });
   const [nudge, setNudge] = useState(0);
@@ -731,18 +860,18 @@ function Tour() {
 
   // Where they left off, if they have been here before.
   useEffect(() => {
-    const saved = read();
+    const saved = read(storageKey, steps.length);
 
     setIndex(saved.step);
     setOpen(!saved.done);
     setReady(true);
-  }, []);
+  }, [steps.length, storageKey]);
 
   useEffect(() => {
     if (ready) {
-      remember({ done: !open, step: index });
+      remember(storageKey, { done: !open, step: index });
     }
-  }, [index, open, ready]);
+  }, [index, open, ready, storageKey]);
 
   useEffect(() => {
     if (DOCUMENT.test(path)) {
@@ -756,6 +885,8 @@ function Tour() {
       changes: latest.current.state.changes,
       path: latest.current.path,
       ripple: latest.current.state.ripple,
+      runs: latest.current.state.runs,
+      samples: latest.current.state.samples,
       step: index,
     });
   }, [index]);
@@ -791,7 +922,7 @@ function Tour() {
 
   const next = useCallback(
     () => setIndex((at) => Math.min(at + 1, steps.length - 1)),
-    []
+    [steps.length]
   );
   const back = useCallback(() => setIndex((at) => Math.max(at - 1, 0)), []);
   const close = useCallback(() => setOpen(false), []);
@@ -805,7 +936,7 @@ function Tour() {
     } else {
       next();
     }
-  }, [index, next]);
+  }, [index, next, steps.length]);
   const flash = useCallback(() => setNudge((count) => count + 1), []);
 
   // A new step starts still. The card is made again for each one, and would
@@ -844,7 +975,7 @@ function Tour() {
   }
 
   return (
-    <>
+    <Steps.Provider value={steps}>
       <Spotlight
         blocking={blocking}
         box={box}
@@ -863,14 +994,32 @@ function Tour() {
         step={step}
         top={box ? box.top + box.height / 2 > box.vh / 2 : false}
       />
-    </>
+    </Steps.Provider>
   );
 }
 
-// The tour is for someone trying the sandbox as a guest.
+// A guest trying the sandbox gets the tour of the sandbox. Someone who has just
+// made an account gets one that sets it up, unless they came from the sandbox
+// and have seen that one.
 export function SandboxTour() {
   const { data } = authClient.useSession();
-  const user = data?.user as { isAnonymous?: boolean | null } | undefined;
+  const [sawSandbox, setSawSandbox] = useState<boolean | null>(null);
+  const user = data?.user as
+    | { createdAt?: Date | string; isAnonymous?: boolean | null }
+    | undefined;
+  const createdAt = user?.createdAt ? new Date(user.createdAt).getTime() : 0;
 
-  return user?.isAnonymous === true ? <Tour /> : null;
+  useEffect(() => setSawSandbox(sawSandboxTour()), []);
+
+  if (!user || sawSandbox === null) {
+    return null;
+  }
+
+  if (user.isAnonymous === true) {
+    return <Tour steps={sandboxSteps} storageKey={SANDBOX_KEY} />;
+  }
+
+  return !sawSandbox && Date.now() - createdAt < NEW_FOR ? (
+    <Tour steps={welcomeSteps} storageKey={WELCOME_KEY} />
+  ) : null;
 }

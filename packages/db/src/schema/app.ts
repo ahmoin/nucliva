@@ -19,6 +19,26 @@ const userId = () =>
     .notNull()
     .references(() => user.id, { onDelete: "cascade" });
 
+// A request to an agent that makes a set of linked files, and how far it got.
+export const agentRuns = pgTable("agent_runs", {
+  id: id(),
+  userId: userId(),
+  prompt: text("prompt").notNull(),
+  title: text("title"),
+  status: text("status", { enum: ["queued", "running", "done", "failed"] })
+    .notNull()
+    .default("queued"),
+  // Where it runs: a Nebius Serverless job, or the web server itself.
+  runner: text("runner", { enum: ["nebius", "local"] })
+    .notNull()
+    .default("local"),
+  jobId: text("job_id"),
+  steps: jsonb("steps").notNull().default(sql`'[]'::jsonb`),
+  error: text("error"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
 export const documents = pgTable("documents", {
   id: id(),
   userId: userId(),
@@ -27,6 +47,12 @@ export const documents = pgTable("documents", {
     .notNull()
     .default("doc"),
   content: jsonb("content").notNull().default(sql`'{}'::jsonb`),
+  // The files an agent made together share its run.
+  runId: text("run_id").references(() => agentRuns.id, {
+    onDelete: "set null",
+  }),
+  // What an agent suggests for the file, waiting to be accepted.
+  pending: jsonb("pending"),
   starredAt: timestamp("starred_at"),
   deletedAt: timestamp("deleted_at"),
   createdAt: timestamp("created_at").notNull().defaultNow(),

@@ -44,7 +44,10 @@ export function AppShell({
             id="header-slot"
           />
         </header>
-        <div className="flex min-w-0 flex-1 flex-col gap-4 p-4">{children}</div>
+        {/* A container, so pages lay out by the room beside the sidebar, not by the width of the screen. */}
+        <div className="@container flex min-w-0 flex-1 flex-col gap-4 p-4">
+          {children}
+        </div>
       </SidebarInset>
       <Omnibar />
       <SandboxTour />

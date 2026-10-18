@@ -2,8 +2,8 @@
 
 import {
   Card,
-  CardAction,
   CardDescription,
+  CardFooter,
   CardHeader,
   CardTitle,
 } from "@workspace/ui/components/card";
@@ -61,22 +61,22 @@ export function QuickActionCard({
   );
 
   return (
-    <Card className="cursor-pointer" onClick={create} size="sm">
+    <Card className="min-w-0 cursor-pointer" onClick={create} size="sm">
       <CardHeader>
         {icon}
         <CardTitle>{title}</CardTitle>
         <CardDescription>{description}</CardDescription>
-        <CardAction>
-          <Button
-            disabled={creating}
-            onClick={handleButtonClick}
-            size="sm"
-            variant="outline"
-          >
-            {creating ? "Creating..." : "Create"}
-          </Button>
-        </CardAction>
       </CardHeader>
+      <CardFooter className="mt-auto">
+        <Button
+          disabled={creating}
+          onClick={handleButtonClick}
+          size="sm"
+          variant="outline"
+        >
+          {creating ? "Creating..." : "Create"}
+        </Button>
+      </CardFooter>
     </Card>
   );
 }

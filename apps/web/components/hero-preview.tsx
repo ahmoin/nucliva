@@ -9,6 +9,12 @@ import {
 import { Badge } from "@workspace/ui/components/badge";
 import { Button } from "@workspace/ui/components/button";
 import {
+  Card,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@workspace/ui/components/card";
+import {
   Table,
   TableBody,
   TableCell,
@@ -36,11 +42,17 @@ const previews = {
 
 const order = ["doc", "slides", "sheet"] as const;
 
+const wins = [
+  "Onboarding went from ten steps to three.",
+  "Median time to first document fell from 14 minutes to 4.",
+  "Week-one activation rose from 41% to 63%.",
+];
+
 const slides = [
-  "Q3 in one slide",
-  "Revenue up 32%",
-  "What we learned",
-  "Next quarter",
+  { note: "Where we landed", title: "Q3 in one slide" },
+  { note: "Up from 24% in Q2", title: "Revenue up 32%" },
+  { note: "Three wins, one miss", title: "What we learned" },
+  { note: "Deliverability and pricing", title: "Next quarter" },
 ];
 
 const competitors = [
@@ -67,11 +79,15 @@ function DocPreview() {
         from ten steps to three, and the numbers say we got there. Here is the
         honest breakdown, wins and misses included.
       </p>
-      <div className="flex flex-col gap-2">
-        <div className="h-2.5 w-full bg-muted" />
-        <div className="h-2.5 w-11/12 bg-muted" />
-        <div className="h-2.5 w-8/12 bg-muted" />
-      </div>
+      <ul className="flex max-w-2xl list-disc flex-col gap-2 pl-5 text-base marker:text-primary md:text-lg">
+        {wins.map((win) => (
+          <li key={win}>{win}</li>
+        ))}
+      </ul>
+      <p className="max-w-2xl text-base text-muted-foreground md:text-lg">
+        The miss: setup emails still land in spam for about one in eight new
+        teams. That is next on the list.
+      </p>
     </>
   );
 }
@@ -90,16 +106,24 @@ function SlidesPreview() {
         Q3 board review
       </h2>
       <div className="grid grid-cols-2 gap-3">
-        {slides.map((title, index) => (
-          <div
-            className="flex aspect-video flex-col justify-between border bg-muted/40 p-4"
-            key={title}
+        {slides.map((slide, index) => (
+          <Card
+            className="aspect-video justify-between"
+            key={slide.title}
+            size="sm"
           >
-            <span className="text-muted-foreground text-xs tabular-nums">
-              0{index + 1}
-            </span>
-            <span className="font-bold text-lg tracking-tight">{title}</span>
-          </div>
+            <CardHeader>
+              <CardDescription className="tabular-nums">
+                0{index + 1}
+              </CardDescription>
+            </CardHeader>
+            <CardHeader>
+              <CardTitle className="normal-case tracking-tight">
+                {slide.title}
+              </CardTitle>
+              <CardDescription>{slide.note}</CardDescription>
+            </CardHeader>
+          </Card>
         ))}
       </div>
     </>

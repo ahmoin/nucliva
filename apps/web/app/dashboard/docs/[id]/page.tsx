@@ -6,6 +6,9 @@ import { notFound } from "next/navigation";
 import { AppShell } from "@/components/app-shell";
 import { DocumentEditor } from "@/components/document-editor";
 import { SandboxBanner } from "@/components/sandbox-banner";
+import { SuiteLinks } from "@/components/suite-links";
+import { siblingsOf } from "@/lib/agents/runs";
+import type { PendingDoc } from "@/lib/agents/suite";
 import { auth } from "@/lib/auth/server";
 
 export default async function Page({
@@ -33,10 +36,14 @@ export default async function Page({
   return (
     <AppShell title="Docs">
       {session.user.isAnonymous ? <SandboxBanner /> : null}
+      <SuiteLinks
+        current={doc.id}
+        files={await siblingsOf(session.user.id, doc.runId)}
+      />
       <DocumentEditor
         content={doc.content as Record<string, unknown>}
-        guest={session.user.isAnonymous === true}
         id={doc.id}
+        suggested={doc.pending as PendingDoc | null}
         title={doc.title}
         updatedAt={doc.updatedAt.getTime()}
       />

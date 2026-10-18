@@ -20,6 +20,7 @@ import {
 } from "@/components/designer/designer";
 import { DesignerProperties } from "@/components/designer/designer-properties";
 import { DesignerToolbar } from "@/components/designer/designer-toolbar";
+import { PendingReview } from "@/components/pending-review";
 
 export interface Slide {
   id: string;
@@ -119,15 +120,22 @@ function Presenter({
 export function SlidesEditor({
   id,
   initialSlides,
+  suggested,
   title: initialTitle,
 }: {
   id: string;
   initialSlides: Slide[];
+  // A deck an agent made, shown until it is accepted or rejected.
+  suggested?: Slide[] | null;
   title: string;
 }) {
-  const [slides, setSlides] = useState(
-    initialSlides.length > 0 ? initialSlides : [createSlide()]
-  );
+  const [slides, setSlides] = useState(() => {
+    const shown = suggested && suggested.length > 0 ? suggested : initialSlides;
+
+    return shown.length > 0 ? shown : [createSlide()];
+  });
+  const [reviewing, setReviewing] = useState(Boolean(suggested?.length));
+  const [settling, setSettling] = useState(false);
   const [active, setActive] = useState(0);
   const [title, setTitle] = useState(initialTitle);
   const [status, setStatus] = useState<SaveStatus>("saved");
@@ -174,10 +182,43 @@ export function SlidesEditor({
   const update = useCallback(
     (next: Slide[]) => {
       setSlides(next);
-      schedule({ content: { slides: next } });
+
+      // A suggestion being looked over is saved only when it is accepted.
+      if (!reviewing) {
+        schedule({ content: { slides: next } });
+      }
     },
-    [schedule]
+    [reviewing, schedule]
   );
+
+  const settle = async (keep: boolean) => {
+    setSettling(true);
+
+    try {
+      const response = await fetch(`/api/documents/${id}`, {
+        body: JSON.stringify(
+          keep ? { content: { slides }, pending: null } : { pending: null }
+        ),
+        headers: { "Content-Type": "application/json" },
+        method: "PATCH",
+      });
+
+      if (!response.ok) {
+        throw new Error("Could not save");
+      }
+
+      setReviewing(false);
+
+      if (!keep) {
+        setSlides(initialSlides.length > 0 ? initialSlides : [createSlide()]);
+        setActive(0);
+      }
+    } catch {
+      setStatus("error");
+    } finally {
+      setSettling(false);
+    }
+  };
 
   const addSlide = () => {
     const next = [...slides, createSlide()];
@@ -261,6 +302,16 @@ export function SlidesEditor({
         : null}
       {presenting ? (
         <Presenter onClose={() => setPresenting(false)} slides={slides} />
+      ) : null}
+      {reviewing ? (
+        <div className="mb-4">
+          <PendingReview
+            busy={settling}
+            onDiscard={() => settle(false)}
+            onKeep={() => settle(true)}
+            what="deck"
+          />
+        </div>
       ) : null}
       <div className="grid gap-4 lg:grid-cols-[176px_minmax(0,1fr)_280px]">
         <aside className="flex flex-col gap-3">

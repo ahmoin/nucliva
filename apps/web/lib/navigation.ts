@@ -7,6 +7,7 @@ import {
   HouseIcon,
   PaletteIcon,
   PresentationChartIcon,
+  RobotIcon,
   StarIcon,
   TableIcon,
   TrashIcon,
@@ -15,6 +16,7 @@ import {
 
 export const mainItems = [
   { href: "/dashboard", icon: HouseIcon, title: "Home" },
+  { href: "/dashboard/agents", icon: RobotIcon, title: "Agents" },
   { href: "/dashboard/projects", icon: FolderIcon, title: "Projects" },
   { href: "/dashboard/my-files", icon: FilesIcon, title: "My Files" },
 ];

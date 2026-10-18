@@ -170,15 +170,18 @@ export function FileTable({
       <Table className="table-fixed">
         <TableHeader>
           <TableRow>
-            <TableHead className="w-[38%]">Name</TableHead>
-            <TableHead className="w-32">Type</TableHead>
-            <TableHead className="w-[18%]">
+            {/* The name takes what the others leave. In a narrow space, the columns that say least are left out. */}
+            <TableHead>Name</TableHead>
+            <TableHead className="hidden w-32 @3xl:table-cell">Type</TableHead>
+            <TableHead className="hidden w-[18%] @2xl:table-cell">
               {variant === "shared" ? "Shared by" : "Owner"}
             </TableHead>
             {variant === "shared" ? (
-              <TableHead className="w-[16%]">Access</TableHead>
+              <TableHead className="hidden w-[16%] @2xl:table-cell">
+                Access
+              </TableHead>
             ) : null}
-            <TableHead className="w-[22%]">
+            <TableHead className="w-28 @2xl:w-[22%]">
               {variant === "trash" ? "Deleted" : "Modified"}
             </TableHead>
             <TableHead className="w-12" />
@@ -221,18 +224,18 @@ export function FileTable({
                     </div>
                   )}
                 </TableCell>
-                <TableCell>
+                <TableCell className="hidden @3xl:table-cell">
                   <Badge variant="secondary">{kind.label}</Badge>
                 </TableCell>
                 <TableCell
-                  className="truncate text-muted-foreground"
+                  className="hidden truncate text-muted-foreground @2xl:table-cell"
                   title={item.owner}
                 >
                   {item.owner}
                 </TableCell>
                 {variant === "shared" ? (
                   <TableCell
-                    className="truncate text-muted-foreground"
+                    className="hidden truncate text-muted-foreground @2xl:table-cell"
                     title={item.permission}
                   >
                     {item.permission}

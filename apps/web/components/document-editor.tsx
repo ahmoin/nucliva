@@ -94,6 +94,7 @@ import {
 } from "@/components/document-autocomplete";
 import { DraftBar } from "@/components/document-draft-bar";
 import { DocumentPages, PAGE_WIDTH } from "@/components/document-pages";
+import { PendingDocPlugin } from "@/components/document-pending";
 import { RipplePlugin, useFactStore } from "@/components/document-ripple";
 import { Ruler } from "@/components/document-ruler";
 import {
@@ -110,6 +111,7 @@ import {
 } from "@/components/document-styles";
 import { DOCUMENT_TRANSFORMERS } from "@/components/document-table";
 import { TourBridge } from "@/components/sandbox-tour-bridge";
+import type { PendingDoc } from "@/lib/agents/suite";
 import { localDb } from "@/lib/db/local";
 
 const zoomLevels = [50, 75, 90, 100, 125, 150, 200];
@@ -1055,15 +1057,14 @@ function Toolbar() {
 
 function DocumentSurface({
   content,
-  guest,
   id,
+  suggested,
   title: initialTitle,
   unsynced,
 }: {
   content: object;
-  // Whether this is someone trying the sandbox, who is shown a tour.
-  guest: boolean;
   id: string;
+  suggested: PendingDoc | null;
   title: string;
   unsynced: boolean;
 }) {
@@ -1288,7 +1289,8 @@ function DocumentSurface({
         <div className="sticky bottom-4 z-10 mx-auto w-full max-w-2xl">
           <DraftBar change={change} documentId={id} onChange={setChange} />
         </div>
-        {guest ? <TourBridge /> : null}
+        <TourBridge />
+        <PendingDocPlugin id={id} pending={suggested} />
         <HistoryPlugin />
         <AutocompletePlugin />
         <RipplePlugin store={facts} />
@@ -1305,14 +1307,15 @@ function DocumentSurface({
 
 export function DocumentEditor({
   content,
-  guest = false,
   id,
+  suggested = null,
   title,
   updatedAt,
 }: {
   content: object;
-  guest?: boolean;
   id: string;
+  // A draft an agent made, put in as suggestions when the doc opens.
+  suggested?: PendingDoc | null;
   title: string;
   updatedAt: number;
 }) {
@@ -1357,8 +1360,8 @@ export function DocumentEditor({
   return (
     <DocumentSurface
       content={initial.content}
-      guest={guest}
       id={id}
+      suggested={suggested}
       title={initial.title}
       unsynced={initial.unsynced}
     />

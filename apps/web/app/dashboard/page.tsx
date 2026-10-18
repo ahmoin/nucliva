@@ -58,7 +58,7 @@ export default async function Page() {
         description="Pick up where you left off, or start something new."
         title="Home"
       />
-      <div className="grid gap-4 md:grid-cols-3">
+      <div className="grid gap-4 @3xl:grid-cols-3">
         {quickActions.map((action) => (
           <QuickActionCard
             description={action.description}
@@ -69,8 +69,8 @@ export default async function Page() {
           />
         ))}
       </div>
-      <div className="grid gap-4 lg:grid-cols-3">
-        <Card className="lg:col-span-2">
+      <div className="grid gap-4 @5xl:grid-cols-3">
+        <Card className="min-w-0 @5xl:col-span-2">
           <CardHeader>
             <CardTitle>Recent files</CardTitle>
             <CardDescription>What you worked on lately.</CardDescription>

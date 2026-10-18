@@ -19,15 +19,18 @@ const EXAMPLE = [
   "That is 4.2 million dollars for the quarter, our best yet.",
 ];
 
-// Sits in the editor for someone in the sandbox, and tells the tour what is
-// going on in the document, and lets it put the example in.
+// Sits in the editor, and tells the tour what is going on in the document, and
+// lets it put the example in.
 export function TourBridge() {
   const [editor] = useLexicalComposerContext();
 
   useEffect(() => {
     let keys: NodeKey[] = [];
 
+    // Counting the changes reads the whole document, so it is only done while
+    // a tour is open to use the count.
     const publish = () =>
+      tour.watched() &&
       editor.getEditorState().read(() => {
         const changes = $changes();
 
@@ -97,6 +100,7 @@ export function TourBridge() {
       return new DOMRect(left, top, right - left, bottom - top);
     };
 
+    tour.refresh = publish;
     publish();
 
     const stop = editor.registerUpdateListener(publish);
@@ -105,6 +109,7 @@ export function TourBridge() {
       stop();
       tour.addExample = null;
       tour.exampleBox = null;
+      tour.refresh = null;
       tour.set({ changes: 0, ripple: 0 });
     };
   }, [editor]);

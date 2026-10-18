@@ -4,6 +4,7 @@ import "@fortune-sheet/react/dist/index.css";
 import { Input } from "@workspace/ui/components/input";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
+import { PendingReview } from "@/components/pending-review";
 
 type WorkbookModule = typeof import("@fortune-sheet/react");
 type Sheets = NonNullable<
@@ -17,21 +18,30 @@ const statusLabel: Record<SaveStatus, string> = {
   saving: "Saving...",
 };
 
+const blank = (sheets: Sheets | null): Sheets =>
+  sheets && sheets.length > 0 ? sheets : [{ celldata: [], name: "Sheet1" }];
+
 export function SheetEditor({
   id,
   sheets,
+  suggested,
   title: initialTitle,
 }: {
   id: string;
   sheets: Sheets | null;
+  // A sheet an agent made, shown until it is accepted or rejected.
+  suggested?: Sheets | null;
   title: string;
 }) {
   const [module, setModule] = useState<WorkbookModule | null>(null);
-  const [initial] = useState<Sheets>(
-    sheets && sheets.length > 0 ? sheets : [{ celldata: [], name: "Sheet1" }]
-  );
+  const [initial, setInitial] = useState<Sheets>(blank(suggested ?? sheets));
+  const [reviewing, setReviewing] = useState(Boolean(suggested));
+  const [settling, setSettling] = useState(false);
+  // The workbook only reads its data once, so a rejected sheet is a new one.
+  const [generation, setGeneration] = useState(0);
+  const reviewed = useRef<Sheets | null>(suggested ?? null);
   const workbook = useRef<import("@fortune-sheet/react").WorkbookInstance>(null);
-  const lastSaved = useRef(JSON.stringify(sheets ?? null));
+  const lastSaved = useRef(JSON.stringify(suggested ?? sheets ?? null));
   const pending = useRef<Record<string, unknown>>({});
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [title, setTitle] = useState(initialTitle);
@@ -93,9 +103,52 @@ export function SheetEditor({
       }
 
       lastSaved.current = serialized;
+
+      // A suggestion being looked over is saved only when it is accepted.
+      if (reviewing) {
+        reviewed.current = next;
+
+        return;
+      }
+
       schedule({ content: { sheets: next } });
     },
-    [schedule]
+    [reviewing, schedule]
+  );
+
+  const settle = useCallback(
+    async (keep: boolean) => {
+      setSettling(true);
+
+      try {
+        const response = await fetch(`/api/documents/${id}`, {
+          body: JSON.stringify(
+            keep
+              ? { content: { sheets: reviewed.current }, pending: null }
+              : { pending: null }
+          ),
+          headers: { "Content-Type": "application/json" },
+          method: "PATCH",
+        });
+
+        if (!response.ok) {
+          throw new Error("Could not save");
+        }
+
+        setReviewing(false);
+
+        if (!keep) {
+          lastSaved.current = JSON.stringify(sheets ?? null);
+          setInitial(blank(sheets));
+          setGeneration((count) => count + 1);
+        }
+      } catch {
+        setStatus("error");
+      } finally {
+        setSettling(false);
+      }
+    },
+    [id, sheets]
   );
 
   const Workbook = module?.Workbook;
@@ -125,9 +178,22 @@ export function SheetEditor({
             slot
           )
         : null}
+      {reviewing ? (
+        <PendingReview
+          busy={settling}
+          onDiscard={() => settle(false)}
+          onKeep={() => settle(true)}
+          what="sheet"
+        />
+      ) : null}
       <div className="h-[calc(100svh-8rem)] min-h-[480px] w-full overflow-hidden border">
         {Workbook ? (
-          <Workbook data={initial} onChange={handleChange} ref={workbook} />
+          <Workbook
+            data={initial}
+            key={generation}
+            onChange={handleChange}
+            ref={workbook}
+          />
         ) : null}
       </div>
     </>
