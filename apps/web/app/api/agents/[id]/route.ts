@@ -2,7 +2,6 @@ import { headers } from "next/headers";
 import { getRun } from "@/lib/agents/runs";
 import { auth } from "@/lib/auth/server";
 
-// How far a run has got, which the page asks for while it works.
 export async function GET(
   _request: Request,
   { params }: { params: Promise<{ id: string }> }

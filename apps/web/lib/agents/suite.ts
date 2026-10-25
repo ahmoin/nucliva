@@ -20,8 +20,6 @@ const SOURCE_EXCERPT = 1500;
 const MAX_ROWS = 20;
 const MAX_POINTS = 4;
 
-// What a doc made by an agent waits with, until the editor puts it in as
-// suggestions.
 export interface PendingDoc {
   edits: Edit[];
   sources: Source[];
@@ -71,7 +69,6 @@ const deckSchema = z.object({
     ),
 });
 
-// Where the run is, written down after every change so the page can show it.
 class Progress {
   readonly steps: AgentStep[] = waitingSteps();
   private readonly runId: string;
@@ -88,7 +85,6 @@ class Progress {
     return this.set(key, "done", detail);
   }
 
-  // What was going on when it stopped is what failed.
   fail() {
     for (const step of this.steps) {
       if (step.status === "running") {
@@ -118,7 +114,6 @@ class Progress {
   }
 }
 
-// A search that fails leaves the files with fewer sources, not no files.
 async function search(query: string) {
   try {
     return await searchWeb(query);
@@ -138,7 +133,6 @@ const withoutFences = (text: string) =>
 
 const plainNumber = /^-?\d+(?:\.\d+)?$/;
 
-// A value written as a plain number is a number in the sheet, so it adds up.
 const cell = (value: string) => {
   const trimmed = value.trim();
 
@@ -150,9 +144,6 @@ const sourceList = (sources: Source[]) =>
     .map((source, index) => `[${index + 1}] ${source.title} (${source.url})`)
     .join("\n");
 
-// Makes a document, a sheet and a deck for one request, in the user's voice and
-// from what the web says, then leaves them as suggestions to accept. Returns
-// whether it got to the end.
 export async function runSuite(runId: string) {
   const [run] = await db
     .select()
@@ -160,7 +151,6 @@ export async function runSuite(runId: string) {
     .where(eq(agentRuns.id, runId))
     .limit(1);
 
-  // A run that is already going or over is not done twice.
   if (!run || run.status !== "queued") {
     return false;
   }
@@ -174,7 +164,6 @@ export async function runSuite(runId: string) {
   const { prompt, userId } = run;
 
   try {
-    // ----- Plan -----
     await progress.start("plan");
 
     const context = await findSimilarChunks({
@@ -204,7 +193,6 @@ export async function runSuite(runId: string) {
       .where(eq(agentRuns.id, runId));
     await progress.done("plan", title);
 
-    // ----- Research -----
     const queries = plan.queries
       .map((query) => query.trim())
       .filter(Boolean)
@@ -229,7 +217,6 @@ export async function runSuite(runId: string) {
         : "Nothing found, so the files lean on what you already have"
     );
 
-    // ----- Voice -----
     await progress.start("voice");
 
     const samples = await findSimilarChunks({
@@ -246,7 +233,6 @@ export async function runSuite(runId: string) {
         : "No writing samples yet, so a plain voice"
     );
 
-    // ----- Doc -----
     await progress.start("doc");
 
     const written = await getChatModel("ultra", { temperature: 0.7 }).invoke([
@@ -271,10 +257,7 @@ export async function runSuite(runId: string) {
 
     await progress.done("doc", `${markdown.split(/\s+/).length} words`);
 
-    // ----- Sheet and deck -----
-    // Both are made from the document, so they say the same things, and they
-    // do not depend on each other. Both are marked as started before either
-    // request is sent, so neither can fail while nothing is waiting on it.
+    // Start both steps before sending either request, so a failure never lands on a waiting step.
     await progress.start("sheet");
     await progress.start("deck");
 
@@ -325,7 +308,6 @@ export async function runSuite(runId: string) {
         title: slide.title.trim(),
       }));
 
-    // ----- Link -----
     await progress.start("link");
 
     const pendingDoc: PendingDoc = {

@@ -14,28 +14,22 @@ import { $changes } from "@/components/document-suggestions";
 import { tour } from "@/components/sandbox-tour-store";
 import { hashText } from "@/lib/editor/facts";
 
-// Three places that state one fact, written three ways, to try the ripple on.
 const EXAMPLE = [
   "Q3 revenue was $4,200,000.",
   "We expect Q3 revenue of $4.2M to hold through the year.",
   "That is 4.2 million dollars for the quarter, our best yet.",
 ];
 
-// Sits in the editor, and tells the tour what is going on in the document, and
-// lets it put the example in.
 export function TourBridge({ facts }: { facts: FactStore }) {
   const [editor] = useLexicalComposerContext();
 
   useEffect(() => {
     let keys: NodeKey[] = [];
 
-    // Counting the changes reads the whole document, so it is only done while
-    // a tour is open to use the count.
     const publish = () =>
       tour.watched() &&
       editor.getEditorState().read(() => {
         const changes = $changes();
-        // The example is ready once every line of it has been read.
         const read = keys.map((key) => {
           const node = $getNodeByKey(key);
 
@@ -55,7 +49,6 @@ export function TourBridge({ facts }: { facts: FactStore }) {
       });
 
     tour.addExample = () => {
-      // A second press while it is being read would put it in twice.
       if (
         keys.length > 0 &&
         editor
@@ -65,7 +58,6 @@ export function TourBridge({ facts }: { facts: FactStore }) {
         return;
       }
 
-      // The chat from the first request would sit over the example.
       document
         .querySelector<HTMLButtonElement>('[aria-label="Hide chat"]')
         ?.click();
@@ -94,8 +86,6 @@ export function TourBridge({ facts }: { facts: FactStore }) {
       );
     };
 
-    // The three paragraphs of the example, as one box, as wide as the page so
-    // that the Accept and Reject buttons in its margin are inside it.
     tour.exampleBox = () => {
       const boxes = keys.flatMap((key) => {
         const box = editor.getElementByKey(key)?.getBoundingClientRect();
@@ -126,9 +116,7 @@ export function TourBridge({ facts }: { facts: FactStore }) {
     publish();
 
     const stop = editor.registerUpdateListener(publish);
-    // Lines are read in the background, after the last edit. The store can
-    // change in the middle of an editor update, so the document is read once
-    // that is over.
+    // Deferred: the fact store can change mid editor update, so read after it ends.
     const stopFacts = facts.subscribe(() => queueMicrotask(publish));
 
     return () => {

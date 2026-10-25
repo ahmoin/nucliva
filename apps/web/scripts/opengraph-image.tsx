@@ -1,15 +1,8 @@
 import { readFileSync } from "node:fs";
 import { ImageResponse } from "next/og";
 
-// The design of the share image. It is baked into app/opengraph-image.png by
-// render-opengraph.mts, so the site serves a plain file instead of drawing it
-// on every build. Change the design here, then run that script.
 export const size = { height: 630, width: 1200 };
 
-// ImageResponse cannot read the theme tokens, so the brand colors are written
-// out here, with the fonts the site uses kept in ./fonts. The picture of the
-// editor is a real screenshot of it (editor-shot.png), with a document that has
-// the AI's suggestions in it.
 const file = (name: string) => readFileSync(new URL(name, import.meta.url));
 
 const bg = "#040a08";
@@ -45,8 +38,6 @@ export default function Image() {
       style={{
         backgroundColor: bg,
         backgroundImage: [
-          // a glow of the brand green behind the screenshot, a cooler one low
-          // on the left, then a fine grid over all of it
           "radial-gradient(circle at 74% 46%, rgba(0,240,140,0.36), rgba(0,240,140,0) 50%)",
           "radial-gradient(circle at 4% 106%, rgba(20,150,200,0.3), rgba(20,150,200,0) 42%)",
           "radial-gradient(circle at 40% -20%, rgba(255,255,255,0.07), rgba(255,255,255,0) 50%)",

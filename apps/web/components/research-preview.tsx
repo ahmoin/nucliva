@@ -29,9 +29,6 @@ const question = "Research the stack Nucliva runs on, with sources";
 
 const answer = `Nucliva writes with **NVIDIA Nemotron** models [[2]](${sources[1]?.url}), served through the OpenAI compatible API of **Nebius Token Factory** [[1]](${sources[0]?.url}). When a request needs facts, it searches the live web with **Tavily** [[3]](${sources[2]?.url}) and writes from what it finds.`;
 
-// A research answer as the chat shows it, made of the same parts: the search
-// step with the sites it found, the answer with its numbered sources, and the
-// list of sources under it.
 export function ResearchPreview() {
   return (
     <div className="flex flex-col gap-4 p-5 text-left">

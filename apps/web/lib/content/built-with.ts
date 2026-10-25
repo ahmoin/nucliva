@@ -1,5 +1,3 @@
-// What Nucliva is built with, in one place, for the built with page and for
-// the Markdown version of it that is served to agents.
 export const partners = [
   {
     description:

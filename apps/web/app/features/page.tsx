@@ -29,7 +29,7 @@ export const metadata: Metadata = {
 const enter =
   "motion-safe:fade-in motion-safe:slide-in-from-bottom-4 motion-safe:animate-in motion-safe:fill-mode-both motion-safe:duration-700 motion-safe:ease-out";
 
-// The icon for each feature in lib/content/features.ts, in the same order.
+// Same order as features in lib/content/features.ts.
 const icons = [
   MicrophoneStageIcon,
   GlobeIcon,

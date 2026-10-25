@@ -8,8 +8,6 @@ import {
 } from "@/lib/agents/nebius-jobs";
 import { runSuite } from "@/lib/agents/suite";
 
-// Sends a run to a Nebius Serverless job. When Nebius is not set up, or will
-// not take the job, it runs on this server after the response has gone.
 export async function dispatchRun(runId: string) {
   if (nebiusJobsConfigured()) {
     try {

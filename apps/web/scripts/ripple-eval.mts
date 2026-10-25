@@ -1,17 +1,9 @@
-// How well does the ripple do? This runs two test documents through the same
-// code the editor uses, changes one fact in each, and checks the suggestions
-// against the ones that should come out.
-//
 //   pnpm dlx tsx scripts/ripple-eval.mts              reads facts with the model
 //   pnpm dlx tsx scripts/ripple-eval.mts --runs 3     does that three times
 //   pnpm dlx tsx scripts/ripple-eval.mts --offline    uses made-up model output
 //                                                      to test the code alone
 //   pnpm dlx tsx scripts/ripple-eval.mts --verbose    shows what was read from
 //                                                      each paragraph
-//
-// Run it from apps/web. The model needs NEBIUS_API_KEY, which it takes from
-// .env.local. The offline run needs nothing, and says so: its numbers show the
-// parsing, the arithmetic and the formatting, not the model.
 import { existsSync, readFileSync } from "node:fs";
 import {
   cleanExtraction,
@@ -32,7 +24,6 @@ const runs = Number(args[args.indexOf("--runs") + 1]) || 1;
 const TODAY = "2026-10-11";
 const YEAR = 2026;
 
-// The key is read from .env.local without printing it.
 if (!process.env.NEBIUS_API_KEY && existsSync(".env.local")) {
   for (const line of readFileSync(".env.local", "utf8").split("\n")) {
     const match = line.match(/^NEBIUS_API_KEY=(.*)$/);
@@ -52,16 +43,13 @@ interface Expected {
 }
 
 interface Case {
-  // What a good reading of each paragraph looks like, for the offline run.
   canned: RawExtraction[];
-  // The value typed in, and the paragraph and words it replaced.
   edit: { from: string; paragraph: number; to: string };
   expected: Expected[];
   name: string;
   paragraphs: string[];
 }
 
-// A fact as a good reading of a paragraph would give it.
 const said = (
   label: string,
   mentions: string[],
@@ -164,8 +152,6 @@ async function run(test: Case) {
   let data = emptyFactData();
 
   for (const [index, paragraph] of test.paragraphs.entries()) {
-    // One after another, as in a document: each is read knowing the facts of
-    // the paragraphs before it.
     // biome-ignore lint/performance/noAwaitInLoops: the order is the point
     const extraction = await read(paragraph, data, test.canned[index]);
 
@@ -204,8 +190,6 @@ async function run(test: Case) {
 
   const blocks = test.paragraphs.map((text, index) => ({
     key: String(index),
-    // The paragraph with the new value in it has not been read again yet, as in
-    // the editor, so nothing is known about it.
     text: index === at ? original.replace(from, to) : text,
   }));
   const { proposals } = proposeRipple({

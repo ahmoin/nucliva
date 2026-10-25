@@ -5,8 +5,7 @@ import { limitGuest } from "@/lib/rate-limit";
 
 const MAX_SENTENCE = 800;
 
-// Makes one sentence true again after a fact it leans on has changed. As with
-// reading facts, the text is never logged.
+// Never log the sentence or the full error, only the error name.
 export async function POST(request: Request) {
   const session = await auth.api.getSession({ headers: await headers() });
 

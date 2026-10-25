@@ -1,16 +1,10 @@
 import type { SourceItem } from "@/lib/knowledge/sources";
 
-// The apps the knowledge base connects to. Each signs the user in with OAuth,
-// then brings in what it can read: Drive files, Notion pages and Slack
-// channels. Each needs an OAuth app of its own; see the README for the keys.
-
 const MAX_ITEMS = 25;
 
 export interface Tokens {
   accessToken: string;
-  // When the access token stops working, for apps whose tokens run out.
   expiresAt?: number;
-  // The workspace or account that was connected, to show on the card.
   name?: string;
   refreshToken?: string;
 }
@@ -19,7 +13,6 @@ export interface Connector {
   authorizeUrl: (state: string, redirectUri: string) => string;
   configured: () => boolean;
   exchange: (code: string, redirectUri: string) => Promise<Tokens>;
-  // A token that has run out is made again, for the apps that allow it.
   refresh?: (tokens: Tokens) => Promise<Tokens>;
   sync: (tokens: Tokens) => Promise<SourceItem[]>;
 }
@@ -33,8 +26,6 @@ async function json<T>(response: Response, what: string): Promise<T> {
 
   return (await response.json()) as T;
 }
-
-// ----- Google Drive -----
 
 const GOOGLE_TYPES: Record<string, string> = {
   "application/vnd.google-apps.document": "text/plain",
@@ -143,8 +134,6 @@ const googleDrive: Connector = {
   },
 };
 
-// ----- Notion -----
-
 const NOTION = "https://api.notion.com/v1";
 const NOTION_VERSION = "2022-06-28";
 
@@ -227,7 +216,6 @@ const notion: Connector = {
         const { results: blocks } = (await response.json()) as {
           results: ({ type: string } & Record<string, unknown>)[];
         };
-        // Every kind of block that holds text keeps it in rich_text.
         const text = blocks
           .map((block) =>
             notionText(
@@ -250,8 +238,6 @@ const notion: Connector = {
     return items.filter((item): item is SourceItem => item !== null);
   },
 };
-
-// ----- Slack -----
 
 const SLACK = "https://slack.com/api";
 const MAX_CHANNELS = 10;
@@ -308,7 +294,6 @@ const slack: Connector = {
 
     return { accessToken: token, name: data.team?.name };
   },
-  // Each channel the user is in becomes one source, of its recent messages.
   sync: async (tokens) => {
     const { channels } = await slackGet<{
       channels: { id: string; is_member?: boolean; name: string }[];
@@ -332,7 +317,7 @@ const slack: Connector = {
 
         return {
           externalId: channel.id,
-          // Oldest first, as the channel reads.
+          // Slack returns newest first, so reverse to read in order.
           text: messages
             .map((message) => message.text?.trim())
             .filter(Boolean)

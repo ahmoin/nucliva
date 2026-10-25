@@ -125,7 +125,6 @@ export function SlidesEditor({
 }: {
   id: string;
   initialSlides: Slide[];
-  // A deck an agent made, shown until it is accepted or rejected.
   suggested?: Slide[] | null;
   title: string;
 }) {
@@ -183,7 +182,6 @@ export function SlidesEditor({
     (next: Slide[]) => {
       setSlides(next);
 
-      // A suggestion being looked over is saved only when it is accepted.
       if (!reviewing) {
         schedule({ content: { slides: next } });
       }

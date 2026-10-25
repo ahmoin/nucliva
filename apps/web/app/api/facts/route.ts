@@ -7,7 +7,6 @@ import { limitGuest } from "@/lib/rate-limit";
 const MAX_PARAGRAPH = 3000;
 const MAX_FACTS = 60;
 
-// Whatever came in the request, checked to be a fact before it is used.
 const isFact = (value: unknown): value is Fact => {
   const fact = value as Partial<Fact> | null;
 
@@ -19,8 +18,7 @@ const isFact = (value: unknown): value is Fact => {
   );
 };
 
-// Reads one paragraph for the facts in it, given the facts the document is
-// already known to have. The text is never logged: only what went wrong.
+// Never log the paragraph or the full error, only the error name.
 export async function POST(request: Request) {
   const session = await auth.api.getSession({ headers: await headers() });
 

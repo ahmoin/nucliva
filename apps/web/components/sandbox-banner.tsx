@@ -2,7 +2,6 @@ import { SparkleIcon } from "@phosphor-icons/react/ssr";
 import { Button } from "@workspace/ui/components/button";
 import Link from "next/link";
 
-// Shown to a guest in the sandbox: what this is, and how to keep what they make.
 export function SandboxBanner() {
   return (
     <div className="flex flex-wrap items-center gap-x-4 gap-y-2 border bg-primary/5 px-4 py-2.5 text-sm">

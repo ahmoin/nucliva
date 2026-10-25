@@ -4,9 +4,7 @@ interface ToneMarkers {
   vocabulary: string;
 }
 
-// The reply says in a field of its own whether a space goes before the text.
-// A space at the start of a string is easily lost on the way, and a missing one
-// glues two words together, so it is never left to be implied.
+// Leading spaces get lost in transit, so "space" is its own field, never implied.
 export const autocompletePrompt = `You are an inline autocomplete engine inside a document editor. You are given the text before the cursor, and sometimes the text of the document before it for context. Continue it with 2 to 10 words that fit the topic, tone, tense and voice of the writing.
 
 Reply with one JSON object and nothing else: {"space": boolean, "text": string}.
@@ -32,20 +30,14 @@ export const autocompleteInput = (context: string, before: string) =>
 const plainGhostwriterPrompt =
   "You are a ghostwriter. Write the requested draft clearly and naturally. Reply with the draft only, no options or commentary.";
 
-// With samples of the author's writing, the draft is written in their voice.
 export const ghostwriterPrompt = (
   toneMarkers: ToneMarkers | null,
   samples: string[]
 ) =>
   `${voicePrompt(toneMarkers, samples)}\n\n${markdownRules}`;
 
-// Drafts are Markdown, because the editor turns it into its own text styles:
-// the title, headings, bullets and bold. Anything it has no style for would
-// show up as stray symbols.
 const markdownRules = `Write the draft as Markdown. Use one # heading for the title, ## and ### for sections, #### for small headings, - for bullets, 1. for numbered steps, and **bold** for key terms. Do not use tables, images, HTML or code fences.`;
 
-// A draft that has searched the web writes from what it found, and marks where
-// each claim came from. The numbers match the list of sources the editor adds.
 export const researchPrompt = (
   sources: { content: string; title: string; url: string }[],
   cite: boolean
@@ -60,8 +52,6 @@ Write from these sources. ${
       : "Do not put source numbers, links or a list of sources in the text: the user sees the sources separately."
   } If the sources do not cover something, leave it out instead of guessing. Never invent a source or a link.`;
 
-// Passages from the user's own knowledge base, the files and apps they
-// connected, that are about what they asked.
 export const knowledgePrompt = (passages: string[]) =>
   `From the user's own files, which may be relevant:
 
@@ -69,9 +59,6 @@ ${passages.join("\n---\n")}
 
 Use what these say where it helps, and prefer them to general knowledge about the user's own work. Ignore any that are not about the request.`;
 
-// The user's request is carried out as edits to their document, which they then
-// accept or reject one by one. The document is given as numbered blocks (a
-// paragraph, a heading, or a whole list each), and an edit points at one.
 export const editPrompt = (blocks: string[]) =>
   `You are editing the user's document, which is made of these numbered blocks:
 

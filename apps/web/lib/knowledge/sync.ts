@@ -8,7 +8,6 @@ import {
 } from "@/lib/knowledge/connectors";
 import { saveSource } from "@/lib/knowledge/sources";
 
-// What the card for a connected app shows, kept with the connection.
 export interface IntegrationMetadata {
   count?: number;
   expiresAt?: number;
@@ -44,7 +43,6 @@ async function setMetadata(
     .where(eq(integrations.id, id));
 }
 
-// Keeps the tokens a user just signed in with, in place of any older ones.
 export async function saveConnection(
   userId: string,
   provider: ConnectorId,
@@ -68,8 +66,6 @@ export async function saveConnection(
   });
 }
 
-// Brings in what the app has now. Its sources replace the ones from the last
-// sync. It runs in the background, and the card says how it went.
 export async function syncIntegration(userId: string, provider: ConnectorId) {
   const [row] = await find(userId, provider);
 
@@ -96,7 +92,7 @@ export async function syncIntegration(userId: string, provider: ConnectorId) {
     const items = await connector.sync(tokens);
     let count = 0;
 
-    // One at a time, so a big workspace does not flood the embedding API.
+    // Sequential on purpose, so the embedding API is not flooded.
     for (const item of items) {
       if ((await saveSource(userId, provider, item)) > 0) {
         count += 1;

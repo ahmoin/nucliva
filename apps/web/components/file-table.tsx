@@ -170,7 +170,6 @@ export function FileTable({
       <Table className="table-fixed">
         <TableHeader>
           <TableRow>
-            {/* The name takes what the others leave. In a narrow space, the columns that say least are left out. */}
             <TableHead>Name</TableHead>
             <TableHead className="hidden w-32 @3xl:table-cell">Type</TableHead>
             <TableHead className="hidden w-[18%] @2xl:table-cell">

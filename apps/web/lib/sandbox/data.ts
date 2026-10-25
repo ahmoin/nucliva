@@ -1,11 +1,5 @@
-// What a guest finds in the sandbox for each line of work: a workspace that
-// looks lived in, with earlier documents, a sheet, a deck, notes to write
-// from and a few samples of writing to match. All of it is made up.
-
 export interface SandboxDoc {
-  // How many days ago it was last changed.
   ago: number;
-  // Lines of text. "## " starts a heading and "- " a bullet.
   body: string[];
   starred?: boolean;
   title: string;
@@ -13,7 +7,6 @@ export interface SandboxDoc {
 
 export interface SandboxSheet {
   ago: number;
-  // The first row is the header.
   rows: (string | number)[][];
   title: string;
 }
@@ -27,7 +20,6 @@ export interface SandboxDeck {
 export interface Workspace {
   deck: SandboxDeck;
   docs: SandboxDoc[];
-  // Rough notes for the document the guest lands in.
   notes: string[];
   samples: string[];
   sheet: SandboxSheet;

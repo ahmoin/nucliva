@@ -8,7 +8,6 @@ import {
   STATE_COOKIE,
 } from "@/lib/knowledge/oauth";
 
-// Sends the user to the app to sign in and allow Nucliva to read it.
 export async function GET(
   request: Request,
   { params }: { params: Promise<{ provider: string }> }
@@ -24,7 +23,6 @@ export async function GET(
     return NextResponse.redirect(backToKnowledge(request, "error=unknown"));
   }
 
-  // A guest's sandbox is not the place to connect a real account.
   if (session.user.isAnonymous) {
     return NextResponse.redirect(backToKnowledge(request, "error=guest"));
   }

@@ -19,7 +19,6 @@ import { useEffect, useRef, useState } from "react";
 export interface ConnectorView {
   configured: boolean;
   description: string;
-  // What was brought in, and when, once there has been a sync.
   detail: string | null;
   id: "google_drive" | "local" | "notion" | "slack";
   name: string;
@@ -35,7 +34,6 @@ const names: Record<string, string> = {
 const POLL_EVERY = 3000;
 const ACCEPT = ".pdf,.txt,.md,.markdown,.csv";
 
-// What came back from signing in to an app, said once at the top.
 function useCallbackMessage() {
   const params = useSearchParams();
   const name = names[params.get("provider") ?? params.get("connected") ?? ""];
@@ -58,8 +56,6 @@ function useCallbackMessage() {
   return error ? { text: errors[error] ?? errors.failed, tone: "error" as const } : null;
 }
 
-// Files from the computer, for the knowledge base. Shared by the card and the
-// button in the page header.
 function useUpload() {
   const router = useRouter();
   const input = useRef<HTMLInputElement>(null);
@@ -270,7 +266,6 @@ export function KnowledgeConnectors({
   const notice = useCallbackMessage();
   const syncing = connectors.some((item) => item.status === "Syncing");
 
-  // While an app is bringing files in, the page looks again now and then.
   useEffect(() => {
     if (!syncing) {
       return;

@@ -20,7 +20,6 @@ export const kindIcons: Record<Kind, typeof FileTextIcon> = {
   Slides: PresentationChartIcon,
 };
 
-// One solution as a card, which opens its own page.
 export function SolutionCard({ solution }: { solution: Solution }) {
   const line = categoryOf(solution.category);
   const KindIcon = kindIcons[solution.kind];

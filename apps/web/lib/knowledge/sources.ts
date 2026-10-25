@@ -3,8 +3,6 @@ import { knowledgeSources } from "@workspace/db/schema";
 import { and, eq } from "drizzle-orm";
 import { ingestText } from "@/lib/ai/embeddings";
 
-// The most text taken from one source, so one huge file cannot use up the
-// whole embedding budget.
 const MAX_TEXT = 60_000;
 
 export type Provider = (typeof knowledgeSources.$inferInsert)["provider"];
@@ -16,9 +14,6 @@ export interface SourceItem {
   url?: string | undefined;
 }
 
-// Puts a source in the knowledge base. One that is there already, from an
-// earlier sync, is replaced, so its old text is not searched any more.
-// Returns how many chunks it became.
 export async function saveSource(
   userId: string,
   provider: Provider,
@@ -30,7 +25,7 @@ export async function saveSource(
     return 0;
   }
 
-  // Deleting the row deletes its chunks with it.
+  // Its chunks cascade-delete with the row.
   await db
     .delete(knowledgeSources)
     .where(

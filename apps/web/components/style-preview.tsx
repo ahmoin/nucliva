@@ -16,8 +16,6 @@ import {
 const DAY = 24 * 60 * 60 * 1000;
 const day = (ago: number) => new Date(Date.UTC(2026, 9, 14) - ago * DAY);
 
-// Writing samples as the Style Profile lists them, with a few made-up pieces
-// of someone's writing.
 const samples: StyleSampleRow[] = [
   {
     content:

@@ -1,5 +1,4 @@
-// What the suite agent does, in order, as it is shown while it works. This
-// file is read by the page as well as the agent, so it imports nothing.
+// Imported by client code too, so keep this file free of imports.
 export const STEPS = [
   { key: "plan", label: "Planning the files" },
   { key: "research", label: "Researching on the web" },
@@ -33,7 +32,6 @@ export interface AgentRunView {
   error: string | null;
   files: RunFile[];
   id: string;
-  // What the Nebius job is doing, while the run waits on it.
   jobState: string | null;
   prompt: string;
   runner: "local" | "nebius";

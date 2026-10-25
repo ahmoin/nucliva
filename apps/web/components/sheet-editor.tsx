@@ -29,7 +29,6 @@ export function SheetEditor({
 }: {
   id: string;
   sheets: Sheets | null;
-  // A sheet an agent made, shown until it is accepted or rejected.
   suggested?: Sheets | null;
   title: string;
 }) {
@@ -37,7 +36,7 @@ export function SheetEditor({
   const [initial, setInitial] = useState<Sheets>(blank(suggested ?? sheets));
   const [reviewing, setReviewing] = useState(Boolean(suggested));
   const [settling, setSettling] = useState(false);
-  // The workbook only reads its data once, so a rejected sheet is a new one.
+  // The workbook reads data only once, so bump its key to reset it.
   const [generation, setGeneration] = useState(0);
   const reviewed = useRef<Sheets | null>(suggested ?? null);
   const workbook = useRef<import("@fortune-sheet/react").WorkbookInstance>(null);
@@ -104,7 +103,6 @@ export function SheetEditor({
 
       lastSaved.current = serialized;
 
-      // A suggestion being looked over is saved only when it is accepted.
       if (reviewing) {
         reviewed.current = next;
 

@@ -5,8 +5,6 @@ import { Button } from "@workspace/ui/components/button";
 import { useRouter } from "next/navigation";
 import { useCallback, useState } from "react";
 
-// Opens a ready-made workspace for a solution, with no sign up: the visitor
-// lands in a document of notes with the request for that solution waiting.
 export function TrySandboxButton({
   category,
   example,
@@ -16,7 +14,6 @@ export function TrySandboxButton({
 }: {
   category: string;
   example: string;
-  // Whether the line under the button, or what went wrong, is shown.
   hint?: boolean;
   label?: string;
   variant?: "default" | "outline";
@@ -52,7 +49,6 @@ export function TrySandboxButton({
   }, [category, example, router]);
 
   const caption = busy ? "Setting up your workspace" : label;
-  // What goes under the button: what went wrong, or what to expect.
   const note =
     error ??
     (hint ? "No sign up needed. Your own workspace, ready in a second." : null);

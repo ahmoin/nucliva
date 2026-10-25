@@ -18,15 +18,12 @@ import {
 } from "@lexical/table";
 import { $isParagraphNode, $isTextNode, type LexicalNode } from "lexical";
 
-// Markdown for a table: a row of cells between bars, then a row of dashes that
-// marks the one above it as the header.
 const ROW = /^(?:\|)(.+)(?:\|)\s?$/;
 const DIVIDER = /^(\| ?:?-*:? ?)+\|\s?$/;
 
 const $cell = (text: string) => {
   const cell = $createTableCellNode(TableCellHeaderStates.NO_STATUS);
 
-  // A cell holds blocks of its own, so its text is converted into it.
   $convertFromMarkdownString(text.replaceAll("\\n", "\n"), TRANSFORMERS, cell);
 
   return cell;
@@ -82,9 +79,6 @@ export const TABLE: ElementTransformer = {
     return lines.join("\n");
   },
   regExp: ROW,
-  // The importer hands over one line at a time, as a paragraph of its own. A
-  // row of dashes turns the row above it into the header, and any other row
-  // gathers the rows of text before it into a table.
   replace: (parent, _children, match) => {
     const line = match[0] ?? "";
 
@@ -153,7 +147,6 @@ export const TABLE: ElementTransformer = {
 
     const before = parent.getPreviousSibling();
 
-    // More rows of a table that is already there are added to it.
     if ($isTableNode(before) && columns(before) === widest) {
       before.append(...table.getChildren());
       parent.remove();

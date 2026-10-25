@@ -37,15 +37,11 @@ import {
   useMargins,
 } from "@/components/document-styles";
 
-// A mark every eighth of an inch, and a number every inch from the left margin.
 const EIGHTH = 12;
 const INCH = 96;
-// Handles snap to a sixteenth of an inch.
 const SNAP = 6;
-// The text between the margins never gets narrower than two inches.
 const MIN_TEXT_WIDTH = 2 * INCH;
 
-// A tab stop dropped this far above or below the ruler is taken away.
 const REMOVE_DISTANCE = 24;
 
 const snap = (value: number) => Math.round(value / SNAP) * SNAP;
@@ -53,8 +49,6 @@ const inches = (pixels: number) => (pixels / INCH).toFixed(2);
 const clamp = (value: number, min: number, max: number) =>
   Math.min(max, Math.max(min, value));
 
-// Where the pointer is on the page, whatever the zoom. Handles sit directly in
-// the ruler, which starts at the left edge of the page.
 function pageX(event: PointerEvent<HTMLButtonElement>, scale: number) {
   const ruler = event.currentTarget.parentElement?.getBoundingClientRect();
 
@@ -64,21 +58,14 @@ function pageX(event: PointerEvent<HTMLButtonElement>, scale: number) {
 interface HandleProps {
   children: ReactNode;
   label: string;
-  // Called with where the handle was dragged to, in page pixels, and whether
-  // that is the first move of this drag.
   onMove: (x: number, fresh: boolean) => void;
-  // Called when the handle is let go well away from the ruler, which is how a
-  // handle that can be removed is removed.
   onRemove?: () => void;
-  // What the tooltip says while the handle is dragged, in inches.
   readout: string;
   scale: number;
-  // Which edge of the ruler the handle sits on.
   side: "bottom" | "top";
   x: number;
 }
 
-// Something on the ruler that is dragged sideways.
 function Handle({
   children,
   label,
@@ -134,7 +121,6 @@ function Handle({
     },
     [end, onRemove]
   );
-  // Pressing a handle must not take the caret out of the document.
   const keepFocus = useCallback(
     (event: React.MouseEvent) => event.preventDefault(),
     []
@@ -158,7 +144,6 @@ function Handle({
       </button>
       {dragging ? (
         <>
-          {/* A line down the page shows what the handle lines up with. */}
           <span
             aria-hidden
             className="pointer-events-none absolute top-full z-10 w-px bg-primary/60"
@@ -177,8 +162,6 @@ function Handle({
   );
 }
 
-// An L for a left stop, a backwards L for a right one, and an upside-down T
-// for a center one. The upright is the stop.
 const tabStopShapes: Record<TabStop["type"], string> = {
   center: "M6 2v8M2 10h8",
   left: "M4 2v8h6",
@@ -189,7 +172,6 @@ const menuItemClass = "font-normal text-sm normal-case tracking-normal";
 
 interface TabStopHandleProps {
   index: number;
-  // The left margin, which stops are measured from.
   margin: number;
   onMove: (index: number, x: number, fresh: boolean) => void;
   onRemove: (index: number) => void;
@@ -197,8 +179,6 @@ interface TabStopHandleProps {
   stop: TabStop;
 }
 
-// One tab stop: an L whose upright is the stop, with the text running to the
-// right of it for a left stop and to the left of it for a right one.
 function TabStopHandle({
   index,
   margin,
@@ -237,8 +217,6 @@ function TabStopHandle({
   );
 }
 
-// The paragraphs the first-line handle is for: the ones selected, or the first
-// of the document while there is no caret yet.
 function $currentBlocks() {
   const selection = $getSelection();
 
@@ -252,8 +230,6 @@ function $currentBlocks() {
   return block ? [block] : [];
 }
 
-// The ruler above the page. The gray ends are the margins, and the triangles
-// drag them. The rectangle is where the first line of the paragraph starts.
 export function Ruler({
   onHide,
   scale,
@@ -265,7 +241,6 @@ export function Ruler({
   const margins = useMargins();
   const [firstLine, setFirstLine] = useState(0);
   const [stops, setStops] = useState<TabStop[]>([]);
-  // Where on the page the ruler was right-clicked, while its menu is open.
   const [menu, setMenu] = useState<number | null>(null);
 
   useEffect(() => {
@@ -283,8 +258,6 @@ export function Ruler({
     );
   }, [editor]);
 
-  // A drag is one step to undo: its first move starts it, and the moves after
-  // it join it.
   const update = useCallback(
     (change: () => void, fresh: boolean) =>
       editor.update(change, fresh ? undefined : { tag: "history-merge" }),
@@ -342,7 +315,6 @@ export function Ruler({
     [margins.left, margins.right, update]
   );
 
-  // Changes the tab stops of the paragraphs the ruler is showing.
   const changeStops = useCallback(
     (change: (stops: TabStop[]) => TabStop[], fresh: boolean) =>
       update(() => {
@@ -383,7 +355,6 @@ export function Ruler({
 
       const x = stopAt(menu);
 
-      // A stop that is already there is replaced, so a place has one kind.
       changeStops(
         (current) => [...current.filter((stop) => stop.x !== x), { type, x }],
         true
@@ -396,8 +367,7 @@ export function Ruler({
     (event: React.MouseEvent<HTMLDivElement>) => {
       const target = event.target as HTMLElement;
 
-      // The menu is drawn elsewhere on the page, but its clicks still arrive
-      // here. Handles have their own clicks and drags.
+      // Clicks from the portaled menu still bubble here through React.
       if (!event.currentTarget.contains(target)) {
         return;
       }
@@ -426,8 +396,7 @@ export function Ruler({
 
   const marks: ReactNode[] = [];
   const first = -Math.floor(margins.left / EIGHTH);
-  // The last mark is before the edge of the page: a mark on it is a pixel wide
-  // and would stick out, and make the box around the page scroll sideways.
+  // Stop before the page edge: a mark there sticks out and causes sideways scroll.
   const last = Math.ceil((PAGE_WIDTH - margins.left) / EIGHTH) - 1;
 
   for (let step = first; step <= last; step += 1) {
@@ -512,11 +481,9 @@ export function Ruler({
         </svg>
       </Handle>
       {stops.map((stop, index) => (
-        // The place in the list is the identity of a stop: its position
-        // changes as it is dragged, and a new key would end the drag.
         <TabStopHandle
           index={index}
-          // biome-ignore lint/suspicious/noArrayIndexKey: see above
+          // biome-ignore lint/suspicious/noArrayIndexKey: a key from the position would change mid-drag and end it
           key={index}
           margin={margins.left}
           onMove={moveStop}
@@ -526,7 +493,6 @@ export function Ruler({
         />
       ))}
       <DropdownMenu onOpenChange={closeMenu} open={menu !== null}>
-        {/* The menu opens where the ruler was right-clicked. */}
         <DropdownMenuTrigger
           nativeButton={false}
           render={
@@ -562,7 +528,6 @@ export function Ruler({
           </DropdownMenuCheckboxItem>
         </DropdownMenuContent>
       </DropdownMenu>
-      {/* The point of the menu: it comes from the place that was clicked. Its center sits on the top edge of the menu and it is drawn over it, with only its two upper edges outlined, so the outline runs around the point and the menu as one shape. */}
       {menu === null ? null : (
         <span
           aria-hidden

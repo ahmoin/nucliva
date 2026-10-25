@@ -27,14 +27,8 @@ import {
 } from "@/components/sandbox-tour-store";
 import { authClient } from "@/lib/auth/client";
 
-// A walk through the sandbox that the person does, not reads. Everything but
-// the thing to use is dimmed and cannot be clicked, each step waits until it
-// has been done, and the later steps send them around the rest of the app. It
-// can be skipped, closed and opened again, so nobody is ever stuck in it.
-
 const SANDBOX_KEY = "nucliva-tour";
 const WELCOME_KEY = "nucliva-welcome-tour";
-// How long an account counts as new, for the tour that sets it up.
 const NEW_FOR = 14 * 24 * 60 * 60 * 1000;
 const DOCUMENT = /^\/dashboard\/(docs|sheets|presentations)\/[^/]+$/;
 const SHEET_OR_DECK = /\/dashboard\/(sheets|presentations)\//;
@@ -43,12 +37,9 @@ const ADVANCE_AFTER = 900;
 const POLL_EVERY = 200;
 
 interface Context extends TourState {
-  // The last document the person had open, which is not another document.
   lastDoc: string;
   path: string;
-  // What things were like when this step began.
   start: Omit<TourState, "example" | "exampleReady"> & {
-    // The last document that was open, which is the one they wrote in.
     doc: string;
     path: string;
     step: number;
@@ -58,22 +49,13 @@ interface Context extends TourState {
 type Target = string | ((context: Context) => DOMRect | null);
 
 interface Step {
-  // Something to press in the card, for a step with nothing on the page to use.
   action?: { label: string; run: () => void };
-  // What to do, shown with a mark that turns into a tick when it is done.
   ask?: string;
   body: string;
-  // Whether the step has been done. A step without this has a Next button.
   done?: (context: Context) => boolean;
-  // Something to put the cursor in when the step begins, on a screen with a
-  // keyboard. A phone is left to tap it, so that the keyboard does not leap up.
   focus?: string;
-  // A big orb at the top of the card, for the first and last steps.
   hero?: OrbState;
-  // A link to sign up under the text, for a guest at the end.
   signup?: boolean;
-  // The look of the small orb beside what to do. Each step has its own, so
-  // that waiting for you does not look the same every time.
   orb?: OrbState;
   target?: Target;
   title: string;
@@ -85,7 +67,6 @@ const visible = (box: DOMRect | null | undefined) =>
 const rectOf = (selector: string) =>
   visible(document.querySelector(selector)?.getBoundingClientRect());
 
-// A file in the list of files that is not the one they have been writing in.
 function otherFile(context: Context) {
   const links = [
     ...document.querySelectorAll<HTMLAnchorElement>(
@@ -101,7 +82,6 @@ function otherFile(context: Context) {
 
 const PROMPT = '[aria-label="What should we write?"]';
 
-// The smallest box around all of these.
 function around(boxes: (DOMRect | null | undefined)[]) {
   const found = boxes.filter((box): box is DOMRect => Boolean(visible(box)));
 
@@ -117,20 +97,15 @@ function around(boxes: (DOMRect | null | undefined)[]) {
   return new DOMRect(left, top, right - left, bottom - top);
 }
 
-// Everything at the bottom of the editor that Nucliva talks through: the prompt
-// bar with its send button, and the chat above it once there is one. It grows
-// when the reply comes, so the reply is not left in the dark.
 const draftBar = () => {
   const bar = document.querySelector(PROMPT)?.closest(".sticky");
 
-  // The chat floats above the bar, outside its box, so it is added to it.
   return around([
     bar?.getBoundingClientRect(),
     bar?.querySelector(".bottom-full")?.getBoundingClientRect(),
   ]);
 };
 
-// The changes in the document, and the bar that settles them, as one area.
 const reviewArea = () =>
   around([
     draftBar(),
@@ -139,12 +114,9 @@ const reviewArea = () =>
     ].map((element) => element.getBoundingClientRect()),
   ]);
 
-// A link in the sidebar. On a phone the sidebar is shut, so until the link is
-// there, the thing to press is the button that opens it.
 const sidebarLink = (href: string) => () =>
   rectOf(`a[href="${href}"]`) ?? rectOf('[data-sidebar="trigger"]');
 
-// The agents page, where a whole suite of files is asked for at once.
 const agentsStep: Step = {
   ask: "Open Agents",
   body: "Ask once, and an agent researches the web, then writes a doc, a sheet and a deck together, all in your voice and with the same numbers. It works in the background on Nebius, and the files arrive as suggestions you accept.",
@@ -154,7 +126,6 @@ const agentsStep: Step = {
   title: "Hand off a whole project",
 };
 
-// Then starting a run there, which goes on while the tour does.
 const runAgentStep: Step = {
   ask: "Click an example, then click Run agent",
   body: "Pick one of the examples under the box, or write your own, and run it. You will see each step as it happens: planning, research, your voice, then the three files. It takes a few minutes, so carry on with the tour and come back to Agents for the files.",
@@ -226,11 +197,8 @@ const sandboxSteps: Step[] = [
   {
     ask: "Click the sheet, the deck or another document in the list",
     body: "Every file here opens in its own editor: a sheet is a real spreadsheet and a deck is a slide editor. Pick one from the list to see it.",
-    // Any file other than the doc they wrote in counts, even one that was
-    // already open when the step began.
     done: ({ path, start }) => DOCUMENT.test(path) && path !== start.doc,
     orb: "working",
-    // Off the list, the way back to it is My Files.
     target: (context) =>
       otherFile(context) ?? sidebarLink("/dashboard/my-files")(),
     title: "Open another file",
@@ -261,7 +229,6 @@ const sandboxSteps: Step[] = [
   },
 ];
 
-// Makes a doc with a first request typed in, and opens it.
 async function startDoc() {
   const response = await fetch("/api/documents", {
     body: JSON.stringify({ kind: "doc" }),
@@ -281,8 +248,6 @@ async function startDoc() {
   window.location.assign(`/dashboard/docs/${id}?prompt=${prompt}`);
 }
 
-// For a new account, which starts empty: teach it your voice, try the agent,
-// then write and review in a doc of your own.
 const welcomeSteps: Step[] = [
   {
     body: "Nucliva writes in your voice and keeps your facts straight. This takes about three minutes: you set up your voice, try an agent, then write something. You do each step, and Nucliva waits for you.",
@@ -312,7 +277,6 @@ const welcomeSteps: Step[] = [
     action: { label: "Create a doc", run: startDoc },
     ask: "Click the button to make a doc",
     body: "Now write something yourself. This makes a new doc with a first request typed in for you.",
-    // The new doc opens with the page loaded again, so any doc open counts.
     done: ({ path }) => DOCUMENT.test(path),
     orb: "working",
     title: "Write in a doc",
@@ -361,8 +325,6 @@ const sameBox = (a: Box | null, b: Box | null) =>
     a.vw === b.vw &&
     a.vh === b.vh);
 
-// Where the thing a step points at is on the screen, kept up to date as the
-// page moves and as the thing turns up. It is brought into view once.
 function useBox(step: Step, context: Context, active: boolean) {
   const [box, setBox] = useState<Box | null>(null);
   const latest = useRef(context);
@@ -395,8 +357,6 @@ function useBox(step: Step, context: Context, active: boolean) {
       setBox((previous) => (sameBox(previous, next) ? previous : next));
     };
 
-    // When the page changes under the highlight, as it does when the chat
-    // opens above the prompt, it follows on the next frame, not a moment later.
     let frame = 0;
     const soon = () => {
       cancelAnimationFrame(frame);
@@ -447,13 +407,10 @@ const remember = (key: string, value: { done: boolean; step: number }) => {
   try {
     localStorage.setItem(key, JSON.stringify(value));
   } catch {
-    // The tour still works. It just comes back next time.
+    // Storage can be blocked; the tour still works.
   }
 };
 
-// When this browser was last in the sandbox as a guest. Someone who signs up
-// from the sandbox has just been walked through it, and is not walked through
-// it all again. A visit long before the account was made does not count.
 const SANDBOX_AT_KEY = "nucliva-sandbox-at";
 const FROM_SANDBOX_WITHIN = 2 * 60 * 60 * 1000;
 
@@ -461,7 +418,7 @@ const markSandbox = () => {
   try {
     localStorage.setItem(SANDBOX_AT_KEY, String(Date.now()));
   } catch {
-    // Then a sign up from here gets the new account tour too.
+    // Storage can be blocked; a sign up then gets the welcome tour too.
   }
 };
 
@@ -475,16 +432,12 @@ const cameFromSandbox = (createdAt: number) => {
   }
 };
 
-// The steps of the tour that is open.
 const Steps = createContext<Step[]>([]);
 
 const dim = "bg-black/65";
 const move =
   "transition-[top,left,width,height] duration-300 ease-[cubic-bezier(0.23,1,0.32,1)] motion-reduce:transition-none";
 
-// Everything is dimmed except the thing to use, which has a ring around it. The
-// dimmed part takes clicks, so that only the highlighted thing can be used.
-// Whether the person has asked their device for less motion.
 function usePrefersReducedMotion() {
   const [reduced, setReduced] = useState(false);
 
@@ -573,8 +526,6 @@ function Spotlight({
           width: box.width,
         }}
       >
-        {/* A light travels around the edge of the thing to use. Under reduced
-            motion it is left off, and the plain ring is all there is. */}
         <BorderBeam
           active={!reduced}
           className="size-full"
@@ -592,7 +543,6 @@ function Spotlight({
   );
 }
 
-// How far along the tour is, as a row of bars.
 function Progress({ index }: { index: number }) {
   const steps = useContext(Steps);
 
@@ -611,7 +561,6 @@ function Progress({ index }: { index: number }) {
   );
 }
 
-// What to do, with a small living orb that becomes a tick once it is done.
 function AskRow({
   ask,
   complete,
@@ -719,8 +668,6 @@ function TourCard({
   onNext: () => void;
   onSkip: () => void;
   step: Step;
-  // Whether the card is at the top of the screen, out of the way of the thing
-  // being pointed at.
   top: boolean;
 }) {
   const steps = useContext(Steps);
@@ -732,7 +679,6 @@ function TourCard({
     offset: { x: number; y: number };
   } | null>(null);
 
-  // The card can be dragged by its top, out of the way of whatever it covers.
   const onGrabStart = (event: React.PointerEvent<HTMLDivElement>) => {
     if ((event.target as HTMLElement).closest("button")) {
       return;
@@ -759,7 +705,6 @@ function TourCard({
       return;
     }
 
-    // Kept on the screen, so that it cannot be lost.
     const dx = Math.min(
       Math.max(event.clientX - start.from.x, -start.box.left),
       window.innerWidth - start.box.right
@@ -859,7 +804,6 @@ function Tour({
   storageKey,
   steps,
 }: {
-  // Where this browser keeps how far it got.
   storageKey: string;
   steps: Step[];
 }) {
@@ -888,7 +832,6 @@ function Tour({
 
   latest.current = { path, state };
 
-  // Where they left off, if they have been here before.
   useEffect(() => {
     const saved = read(storageKey, steps.length);
 
@@ -903,15 +846,12 @@ function Tour({
     }
   }, [index, open, ready, storageKey]);
 
-  // The last text document open, which is the one they wrote in. Sheets and
-  // decks do not count, since the writing happens in a doc.
   useEffect(() => {
     if (path.startsWith("/dashboard/docs/") && DOCUMENT.test(path)) {
       lastDoc.current = path;
     }
   }, [path]);
 
-  // What things were like when the step began, to tell when it has been done.
   useEffect(() => {
     setStart({
       changes: latest.current.state.changes,
@@ -935,10 +875,8 @@ function Tour({
   const box = useBox(step, context, open && ready);
   const complete =
     open && start.step === index && Boolean(step.done?.(context));
-  // A step that points at something that is not there is not a trap.
   const blocking = open && !(step.target && !box);
 
-  // Where typing is wanted, the cursor is put there once, as the step starts.
   useEffect(() => {
     const field = step.focus;
 
@@ -974,12 +912,10 @@ function Tour({
   }, [index, next, steps.length]);
   const flash = useCallback(() => setNudge((count) => count + 1), []);
 
-  // A new step starts still. The card is made again for each one, and would
-  // shake again if the last step was ever shaken.
+  // Reset per step: the card remounts per step and would replay the shake.
   // biome-ignore lint/correctness/useExhaustiveDependencies: runs when the step changes
   useEffect(() => setNudge(0), [index]);
 
-  // A step that has been done moves on by itself, after a moment to see it.
   useEffect(() => {
     if (!complete) {
       return;
@@ -1033,9 +969,6 @@ function Tour({
   );
 }
 
-// A guest trying the sandbox gets the tour of the sandbox. Someone who has just
-// made an account gets one that sets it up, unless they came from the sandbox
-// and have seen that one.
 export function SandboxTour() {
   const { data } = authClient.useSession();
   const [fromSandbox, setFromSandbox] = useState<boolean | null>(null);

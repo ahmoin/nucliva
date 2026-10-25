@@ -57,8 +57,6 @@ export interface Turn {
   text: string;
 }
 
-// Answers the user, and carries out what they asked on their document, written
-// in their voice, as edits to its blocks.
 export async function suggestEdits({
   blocks,
   cite = false,
@@ -68,21 +66,14 @@ export async function suggestEdits({
   sources,
   userId,
 }: {
-  // The document as text, one entry per top-level block.
   blocks: string[];
-  // Mark in the text where each claim came from.
   cite?: boolean;
-  // What was said before in this conversation.
   history?: Turn[];
   prompt: string;
-  // Search the web first and write from what it finds.
   research?: boolean;
-  // What a search already found, when the caller has searched itself.
   sources?: Source[];
   userId: string;
 }) {
-  // The search, the look at the user's style and the look in their knowledge
-  // base do not depend on each other.
   const [samples, known, found] = await Promise.all([
     findSimilarChunks({ kind: "style", query: prompt, userId }),
     findSimilarChunks({ kind: "context", limit: 6, query: prompt, userId }),
@@ -119,8 +110,6 @@ export async function suggestEdits({
       .withStructuredOutput(editsSchema)
       .invoke(messages));
   } catch (error) {
-    // A model that cannot give edits as data still answers. Its words are the
-    // reply, and nothing is written into the document without being asked.
     console.error("edits failed:", error);
 
     const response = await model.invoke(messages);
@@ -138,7 +127,6 @@ export async function suggestEdits({
   };
 }
 
-// A search that fails leaves a draft without sources, not no draft.
 async function searchSafely(query: string) {
   try {
     return { error: null, sources: await searchWeb(query) };

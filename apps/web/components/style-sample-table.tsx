@@ -33,7 +33,6 @@ const firstLine = (content: string) =>
 const countWords = (content: string) =>
   content.trim() ? content.trim().split(/\s+/).length : 0;
 
-// The writing samples a voice is learned from.
 export function StyleSampleTable({ samples }: { samples: StyleSampleRow[] }) {
   return (
     <Table className="table-fixed">

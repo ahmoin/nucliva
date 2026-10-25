@@ -14,7 +14,6 @@ const icons = {
   slides: PresentationChartIcon,
 };
 
-// The files an agent made together, one click from each other.
 export function SuiteLinks({
   current,
   files,

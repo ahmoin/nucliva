@@ -19,8 +19,7 @@ export const auth = betterAuth({
     enabled: true,
   },
   plugins: [
-    // A visitor trying a solution gets a guest account. When they sign up, the
-    // guest's work moves to the new account before the guest is deleted.
+    // Move every user-owned table here, or the guest's rows die with the guest.
     anonymous({
       generateName: () => "Guest",
       onLinkAccount: async ({ anonymousUser, newUser }) => {

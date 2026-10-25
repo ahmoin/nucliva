@@ -15,7 +15,6 @@ import {
 
 type Run = typeof agentRuns.$inferSelect;
 
-// The files of each run that are still around.
 async function filesOf(runIds: string[]) {
   if (runIds.length === 0) {
     return new Map<string, RunFile[]>();
@@ -79,8 +78,6 @@ export async function listRuns(userId: string, limit = 20) {
   return runs.map((run) => view(run, files.get(run.id) ?? []));
 }
 
-// One run. A run on Nebius is also checked against its job, so one whose job
-// died says so instead of waiting for ever.
 export async function getRun(userId: string, id: string) {
   const [run] = await db
     .select()
@@ -100,7 +97,6 @@ export async function getRun(userId: string, id: string) {
     jobState = await agentJobState(run.jobId).catch(() => null);
 
     if (jobState && ENDED_STATES.has(jobState)) {
-      // The job is over but the run never got to the end.
       const [failed] = await db
         .update(agentRuns)
         .set({
@@ -118,7 +114,7 @@ export async function getRun(userId: string, id: string) {
           )
         )
         .returning();
-      // When nothing changed, the run finished while the job was asked about.
+      // No row updated means the run finished meanwhile, so re-read it.
       const [latest] = failed
         ? [failed]
         : await db
@@ -136,7 +132,6 @@ export async function getRun(userId: string, id: string) {
   return view(current, files.get(run.id) ?? [], jobState);
 }
 
-// The other files made in the same run as this one.
 export async function siblingsOf(userId: string, runId: string | null) {
   if (!runId) {
     return [];

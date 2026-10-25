@@ -24,7 +24,6 @@ type Props = { params: Promise<{ category: string; example: string }> };
 const enter =
   "motion-safe:fade-in motion-safe:slide-in-from-bottom-4 motion-safe:animate-in motion-safe:fill-mode-both motion-safe:duration-700 motion-safe:ease-out";
 
-// The same three steps for every solution, because that is how Nucliva works.
 const steps = [
   {
     body: "Say what you need in plain words, and add notes, files or a link if you have them.",

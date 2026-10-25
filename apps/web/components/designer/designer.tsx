@@ -673,7 +673,6 @@ export function DesignerFrame() {
               const frame = frameOf(event.target);
 
               event.setOrigin(["%", "%"]);
-              // dragStart is false when the resize does not also drag.
               if (event.dragStart) {
                 event.dragStart.set([frame.x, frame.y]);
               }

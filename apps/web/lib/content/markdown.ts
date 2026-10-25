@@ -11,17 +11,11 @@ import {
 } from "@/lib/content/solutions";
 import { contactEmail, legalUpdated, repoUrl, siteUrl } from "@/lib/site";
 
-// Plain Markdown versions of the public pages, for agents and tools that would
-// rather read text than HTML. They come from the same data as the pages, so
-// they stay in step with them. Each page is served at its own address with
-// ".md" on the end, and at the normal address to anyone who asks for Markdown.
-
 const TAGLINE = "The AI workspace that writes like you.";
 
 const SUMMARY =
   "Nucliva learns your voice, researches the web and turns ideas into docs, slides and sheets, faster.";
 
-// A page of the site, as the address of its Markdown version.
 const md = (path: string) => `${siteUrl}${path === "/" ? "" : path}.md`;
 const page = (path: string) => `${siteUrl}${path === "/" ? "" : path}`;
 
@@ -203,8 +197,6 @@ function solutionPageMarkdown(category: string, example: string) {
   ].join("\n");
 }
 
-// The legal pages are long, so here they are in short, with a link to the
-// whole text, which is the one that counts.
 const legalSummaries: Record<string, { points: string[]; title: string }> = {
   cookies: {
     points: [
@@ -264,8 +256,6 @@ function legalPage(slug: string) {
   ].join("\n");
 }
 
-// The Markdown for a page, given the parts of its address, or null when there
-// is no such page. The home page is "home".
 export function markdownFor(path: string[]) {
   const [first, second, third] = path;
 
@@ -300,12 +290,10 @@ export function markdownFor(path: string[]) {
   return null;
 }
 
-// The address of the page a Markdown page is a version of.
 export function canonicalFor(path: string[]) {
   return path[0] === "home" ? siteUrl : `${siteUrl}/${path.join("/")}`;
 }
 
-// Every page there is Markdown for, as the address of the page.
 export function markdownPages() {
   return [
     "/",

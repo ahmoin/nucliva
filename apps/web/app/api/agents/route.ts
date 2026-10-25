@@ -7,8 +7,6 @@ import { waitingSteps } from "@/lib/agents/steps";
 import { auth } from "@/lib/auth/server";
 import { limitGuest } from "@/lib/rate-limit";
 
-// A run that is not sent to Nebius goes on here after the response, for as
-// long as the platform lets a function live.
 export const maxDuration = 300;
 
 const MAX_PROMPT = 2000;
@@ -23,7 +21,6 @@ export async function GET() {
   return Response.json({ runs: await listRuns(session.user.id) });
 }
 
-// Starts a suite agent: a doc, a sheet and a deck made together.
 export async function POST(request: Request) {
   const session = await auth.api.getSession({ headers: await headers() });
 

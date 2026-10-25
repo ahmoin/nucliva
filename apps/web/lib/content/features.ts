@@ -1,5 +1,3 @@
-// What Nucliva does, in one place, for the features page and for the Markdown
-// version of it that is served to agents.
 export const features = [
   {
     description:

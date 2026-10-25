@@ -1,38 +1,21 @@
-// The ripple: when someone changes a fact in a document (a number, an amount, a
-// percentage or a date), the other places that say the same thing can be
-// changed to match. A model reads each paragraph and says which facts are in
-// it. Everything else is code: reading the values, working out the new ones,
-// and writing each back in the form its own place used.
-
 export interface Fact {
-  // How the value is worked out from other facts, when the text says so, such
-  // as "launch_date - 6 weeks".
   derivedFrom?: string;
   id: string;
   label: string;
-  // "USD", "EUR", "GBP", "%", "date", or a noun for a count, like "employees".
   unit: string;
-  // Money in whole units, a percentage as the number, a date as YYYY-MM-DD.
   value: number | string;
 }
 
-// A fact as a paragraph writes it: the exact words, like "$4.2M".
 export interface Mention {
   factId: string;
   text: string;
 }
 
-// A sentence that depends on a fact without saying its value.
 export interface Dependent {
   factId: string;
   sentence: string;
 }
 
-// What is known about the document. It is saved with it. The mentions are kept
-// by a hash of the paragraph they were found in, so a paragraph that has not
-// changed is never read again.
-// A ripple that was put in the document: the change that set it off, and the
-// text of every place it changed before and after, so it can be put back.
 export interface RippleEntry {
   at: number;
   from: string;
@@ -43,7 +26,6 @@ export interface RippleEntry {
   to: string;
 }
 
-// How many ripples a document keeps in its log.
 export const MAX_LOG = 30;
 
 export interface FactData {
@@ -115,8 +97,6 @@ const CURRENCY: Record<string, string> = {
 
 const currentYear = () => new Date().getFullYear();
 
-// A short fingerprint of a paragraph, to know it again: two simple hashes of
-// the text, side by side, so that two paragraphs are very unlikely to share one.
 export function hashText(text: string) {
   let first = 7;
   let second = 11;
@@ -132,7 +112,6 @@ export function hashText(text: string) {
 }
 
 const DIGIT = /\d/;
-// What a paragraph with a fact in it tends to have in it.
 const FACT_SIGNS = [
   /[$€£%]/,
   /\b\d[\d,.]*\s?(?:k|m|mm|bn|b|million|billion|thousand|percent|pct|dollars?|euros?|usd)\b/i,
@@ -142,7 +121,6 @@ const FACT_SIGNS = [
   /\b\d[\d,.]*\s+[a-z]{3,}/i,
 ];
 
-// A quick look, before spending a request: could this paragraph hold a fact?
 export function hasFact(text: string) {
   return (
     text.length >= 8 &&
@@ -151,10 +129,7 @@ export function hasFact(text: string) {
   );
 }
 
-// ---------- Dates ----------
-
 interface DateStyle {
-  // Whether the year was written, and whether it was after a comma.
   comma: boolean;
   dot: boolean;
   kind: "dmy" | "iso" | "mdy" | "us";
@@ -176,7 +151,6 @@ const monthFrom = (name: string) => {
 const toIso = (year: number, month: number, day: number) => {
   const date = new Date(Date.UTC(year, month, day));
 
-  // A day that is not on the calendar, like February 30, is not a date.
   if (
     date.getUTCFullYear() !== year ||
     date.getUTCMonth() !== month ||
@@ -298,7 +272,6 @@ const parseDateText = (text: string, refYear: number) => {
   );
 };
 
-// Whether a month is written out ("March", "May") or cut short ("Mar", "Sept").
 const isFullMonth = (written: string) => {
   const word = written.replace(".", "").toLowerCase();
 
@@ -320,7 +293,6 @@ function writeDate(iso: string, style: DateStyle, refYear: number) {
     return iso;
   }
 
-  // The year is left out only when the text left it out and it is this year.
   const showYear = style.year || y !== refYear;
 
   if (style.kind === "us") {
@@ -341,8 +313,6 @@ function writeDate(iso: string, style: DateStyle, refYear: number) {
 
   return `${month} ${day}${showYear ? `${style.comma || !style.year ? "," : ""} ${y}` : ""}`;
 }
-
-// ---------- Numbers ----------
 
 const NUMBER_SHAPE = /^(\D*?)(\d[\d,]*(?:\.\d+)?)(.*)$/s;
 const SCALE_SHAPE = /^(\s*)(million|billion|thousand|mm|bn|k|m|b)\b(.*)$/is;
@@ -365,8 +335,6 @@ const currencyOf = (text: string) => {
   return word ? CURRENCY[word.toLowerCase()] : undefined;
 };
 
-// What a piece of text says, if it says a fact. The unit the fact is known to
-// have helps with text that leaves it out, like "4.2 million".
 export function parseMention(
   text: string,
   hint = "",
@@ -400,16 +368,12 @@ export function parseMention(
   const factor = scale ? (SCALES[(scale[2] ?? "").toLowerCase()] ?? 1) : 1;
   const currency = currencyOf(`${prefix}${rest}`);
 
-  // A leading word is fine ("about 12"), but a bare "k" or "m" in the middle of
-  // other words is not a scale.
   return {
     unit: currency ?? (hint || "count"),
     value: Math.round(base * factor * 1e6) / 1e6,
   };
 }
 
-// Whether two units can be the same fact: money in one currency is not a
-// percentage, and a date is not a number of anything.
 export const compatible = (a: string, b: string) =>
   a === b ||
   (a === "count" && !["%", "date"].includes(b)) ||
@@ -423,7 +387,6 @@ export const sameValue = (a: number | string, b: number | string) => {
   return Math.abs(a - b) <= 1e-9 * Math.max(1, Math.abs(a), Math.abs(b));
 };
 
-// How many decimals a number needs, up to a limit, with no trailing zeros.
 const neededDecimals = (value: number, limit: number) =>
   Number(value.toFixed(limit)).toString().split(".")[1]?.length ?? 0;
 
@@ -435,9 +398,6 @@ function writeNumber(value: number, decimals: number, commas: boolean) {
   return fraction ? `${grouped}.${fraction}` : grouped;
 }
 
-// A value written the way a given piece of text writes it: the same symbol,
-// the same short or long form, the same number of decimals, the same style of
-// date. This is what keeps "$4.2M" short and "$4,200,000" long.
 export function formatLike(
   original: string,
   value: number | string,
@@ -489,8 +449,6 @@ export function formatLike(
   )}${rest}`;
 }
 
-// ---------- Arithmetic ----------
-
 type Quantity =
   | { kind: "date"; ms: number }
   | { kind: "duration"; days: number; months: number }
@@ -519,7 +477,6 @@ function tokenize(expression: string) {
 
     const match = TOKEN.exec(expression);
 
-    // Only spaces left is the end, anything else is not an expression.
     if (!match) {
       return expression.slice(position).trim() ? null : tokens;
     }
@@ -540,7 +497,6 @@ function tokenize(expression: string) {
   return tokens;
 }
 
-// The facts a worked out value depends on.
 export function dependsOn(expression: string) {
   return (tokenize(expression) ?? [])
     .filter((token) => token.type === "id" && !UNIT_WORDS.has(token.text))
@@ -611,7 +567,6 @@ const DAYS = /^day/i;
 const WEEKS = /^week/i;
 const YEARS = /^year/i;
 
-// "6 weeks" as an amount of time.
 function durationOf(text: string): Quantity {
   const [amount = "0", unit = ""] = text.split(" ");
   const n = Number(amount);
@@ -627,7 +582,6 @@ function durationOf(text: string): Quantity {
   return { days: 0, kind: "duration", months: YEARS.test(unit) ? n * 12 : n };
 }
 
-// What a fact is worth in an expression: a number, or a date.
 function lookup(
   values: Map<string, number | string>,
   id: string
@@ -641,8 +595,6 @@ function lookup(
   return typeof value === "string" ? { kind: "date", ms: dateMs(value) } : null;
 }
 
-// Works out an expression over facts, like "launch_date - 6 weeks". This is
-// plain code on purpose: a model does not get to do the arithmetic.
 export function evaluate(
   expression: string,
   values: Map<string, number | string>
@@ -733,8 +685,6 @@ export function evaluate(
   return result.kind === "number" ? Math.round(result.n * 1e6) / 1e6 : null;
 }
 
-// The new value of every fact that follows from a change, given how the facts
-// are worked out from one another.
 export function followFrom(
   facts: Fact[],
   changedId: string,
@@ -776,9 +726,6 @@ export function followFrom(
   return updated;
 }
 
-// ---------- Finding facts in text ----------
-
-// Where each known mention is in a paragraph, in order, each place used once.
 export function locateMentions(text: string, mentions: Mention[]): Located[] {
   const found: Located[] = [];
   const taken = (start: number, end: number) =>
@@ -826,13 +773,10 @@ export interface Proposal {
 
 export interface Change {
   factId: string;
-  // Where the new value was typed, which is left alone.
   source: { blockKey: string; end: number; start: number };
   value: number | string;
 }
 
-// A mention as it should now read, in its own form, or null if it should stay
-// as it is: it already says this, or it is not really this fact.
 function rewritten(
   text: string,
   unit: string,
@@ -841,8 +785,6 @@ function rewritten(
 ) {
   const parsed = parseMention(text, unit, refYear);
 
-  // A mention that reads as another kind of thing than the fact is not this
-  // fact, whatever the model said.
   if (
     !(parsed && compatible(parsed.unit, unit)) ||
     sameValue(parsed.value, next)
@@ -855,8 +797,6 @@ function rewritten(
   return to && to !== text ? to : null;
 }
 
-// Every place that should change because a fact did, written the way each
-// place writes it. Also gives the facts with their new values.
 export function proposeRipple({
   blocks,
   change,
@@ -911,22 +851,16 @@ export function proposeRipple({
   };
 }
 
-// ---------- Keeping the table ----------
-
 const MONTH_WORDS = "(?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*";
 const VALUE_SPANS = [
-  // A date, in any of the ways the parser reads one.
   new RegExp(
     `\\b${MONTH_WORDS}\\.?\\s+\\d{1,2}(?:st|nd|rd|th)?(?:,?\\s+\\d{4})?\\b|\\b\\d{1,2}(?:st|nd|rd|th)?\\s+(?:of\\s+)?${MONTH_WORDS}\\.?(?:,?\\s+\\d{4})?\\b|\\b\\d{4}-\\d{2}-\\d{2}\\b|\\b\\d{1,2}/\\d{1,2}(?:/\\d{2,4})?\\b`,
     "i"
   ),
-  // A percentage.
   /\d+(?:\.\d+)?\s?(?:%|percent|per cent|pct)/i,
-  // An amount or a count, with its symbol and scale.
   /(?:(?:US\$|USD\s?|EUR\s?|GBP\s?|[$€£])\s?)?\d[\d,]*(?:\.\d+)?(?:\s?(?:million|billion|thousand|mm|bn|k|m|b)\b)?(?:\s(?:dollars?|usd|euros?|eur|pounds?|gbp)\b)?/i,
 ];
 
-// Just the value in a mention that has other words with it, like "up 12%".
 export function valueIn(text: string) {
   for (const pattern of VALUE_SPANS) {
     const found = text.match(pattern)?.[0];
@@ -939,7 +873,6 @@ export function valueIn(text: string) {
   return null;
 }
 
-// What is found in a paragraph, once it is trusted.
 export interface Extraction {
   dependents: Dependent[];
   facts: {
@@ -952,9 +885,6 @@ export interface Extraction {
   }[];
 }
 
-// What a model says about a paragraph, before it is. It names each fact and
-// says where the paragraph states it, and whether it is one the document
-// already has. It does not make up ids or read values: code does that.
 export interface RawExtraction {
   dependents: { about: string; sentence: string }[];
   facts: {
@@ -992,9 +922,6 @@ const wordsOf = (label: string) =>
     (label.toLowerCase().match(WORD) ?? []).filter((word) => !FILLER.has(word))
   );
 
-// Whether two labels name the same thing: "Q3 revenue" and "revenue amount
-// Q3" do, "Q3 revenue" and "seed funding raised" do not, and "total revenue"
-// is not "Q3 revenue".
 function similar(a: string, b: string) {
   const x = wordsOf(a);
   const y = wordsOf(b);
@@ -1016,7 +943,6 @@ const slugOf = (label: string) =>
     .replaceAll(EDGE_UNDERSCORES, "")
     .slice(0, 40);
 
-// An id for a new fact, made from its name, that no fact has yet.
 function freshId(label: string, taken: Set<string>) {
   const base = slugOf(label) || "fact";
   let id = base;
@@ -1032,8 +958,6 @@ function freshId(label: string, taken: Set<string>) {
   return id;
 }
 
-// The values in what a model gave as a fact's mentions, each only if the
-// paragraph has it, each once.
 const mentionsIn = (paragraph: string, texts: string[]) => [
   ...new Set(
     texts.flatMap((text) => {
@@ -1044,8 +968,6 @@ const mentionsIn = (paragraph: string, texts: string[]) => [
   ),
 ];
 
-// The fact in the table, or already found in this paragraph, that a fact is,
-// by the id the model gave or by its name.
 function knownFact(
   table: Fact[],
   found: Extraction["facts"],
@@ -1062,12 +984,6 @@ function knownFact(
       );
 }
 
-// What a model said about a paragraph, made into what can be trusted. The
-// values are read from the words, not taken from the model. A mention must be
-// in the paragraph and read as the fact it claims to be. A fact the document
-// already has is found by the id the model chose or, failing that, by its
-// name, so one fact written two ways stays one fact. New facts get an id made
-// from their name here, not one the model made up.
 export function cleanExtraction(
   paragraph: string,
   raw: RawExtraction,
@@ -1133,9 +1049,6 @@ export function cleanExtraction(
   return { dependents, facts };
 }
 
-// Adds what was found in a paragraph to what is known. A fact that is already
-// known keeps its label and its value, and gains how it was worked out if it
-// had no way before.
 export function mergeExtraction(
   data: FactData,
   paragraph: string,
@@ -1150,9 +1063,6 @@ export function mergeExtraction(
     }
   }
 
-  // A way of working a value out is believed only if it works: it has to lean
-  // on facts that exist, and give the value this paragraph states. A model that
-  // writes "launch_date" where it means "launch_date - 6 weeks" is caught here.
   const derivation = (found: Extraction["facts"][number]) => {
     const expression = found.derivedFrom?.trim();
     const needs = expression ? dependsOn(expression) : [];
@@ -1218,7 +1128,6 @@ const isEntry = (value: unknown): value is RippleEntry => {
   );
 };
 
-// What came back from a saved document, checked.
 export function readFactData(value: unknown): FactData {
   const data = value as Partial<FactData> | null | undefined;
 
@@ -1245,7 +1154,6 @@ export function readFactData(value: unknown): FactData {
   };
 }
 
-// The kind of thing a fact is, for the hint beside an edit.
 export function kindOf(unit: string) {
   if (unit === "date") {
     return "date";

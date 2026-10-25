@@ -7,7 +7,7 @@ import { auth } from "@/lib/auth/server";
 
 const updateSchema = z.object({
   content: z.record(z.string(), z.unknown()).optional(),
-  // What an agent suggested is only ever settled, never written from here.
+  // Only null: agent suggestions can be cleared here, never written.
   pending: z.null().optional(),
   starred: z.boolean().optional(),
   title: z.string().min(1).max(500).optional(),

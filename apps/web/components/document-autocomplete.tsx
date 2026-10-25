@@ -30,7 +30,6 @@ const SUGGEST_DELAY = 350;
 const CONTEXT_LENGTH = 500;
 const EARLIER_LENGTH = 1500;
 
-// Updates the plugin makes are not worth an undo step of their own.
 const QUIET = { tag: "history-merge" };
 
 type SerializedAutocompleteNode = Spread<
@@ -38,8 +37,6 @@ type SerializedAutocompleteNode = Spread<
   SerializedLexicalNode
 >;
 
-// The suggestion, shown inline in gray after the caret. It is only there
-// while it is offered, and is dropped from any document that loads with one.
 export class AutocompleteNode extends DecoratorNode<JSX.Element> {
   __style: Record<string, string>;
   __text: string;
@@ -102,8 +99,6 @@ const $isAutocompleteNode = (
   node: LexicalNode | null | undefined
 ): node is AutocompleteNode => node instanceof AutocompleteNode;
 
-// The text of the line up to the caret, when the caret is at the end of some
-// plain text. A space at the end counts: the next word is offered then too.
 function $contextAtCaret() {
   const selection = $getSelection();
 
@@ -142,8 +137,6 @@ function $contextAtCaret() {
   return line.slice(-CONTEXT_LENGTH);
 }
 
-// What the document says before the paragraph being written, so the model
-// knows the topic and the voice and not only the last line.
 function $earlierText() {
   const block = $getSelection()?.getNodes()[0]?.getTopLevelElement();
   const parts: string[] = [];
@@ -163,9 +156,6 @@ function $earlierText() {
   return parts.join("\n").slice(-EARLIER_LENGTH);
 }
 
-// The model answers with the exact characters to type next, so they are used as
-// they are. It may still repeat what was written, which is cut off, and a
-// space that is already typed is not typed twice.
 function continuation(context: string, completion: string) {
   const written = context.trimEnd();
   const rest = completion.toLowerCase().startsWith(written.toLowerCase())
@@ -173,14 +163,11 @@ function continuation(context: string, completion: string) {
     : completion;
   const next = /\s$/.test(context) ? rest.trimStart() : rest;
 
-  // After the end of a sentence the next word starts with a capital.
   return /[.!?]["')\]]*\s*$/.test(context)
     ? next.replace(/^(\s*)([a-z])/, (_, space, letter) => space + letter.toUpperCase())
     : next;
 }
 
-// Offers a few words to continue what is being written. Tab or the right arrow
-// takes them, and typing anything else drops them.
 export function AutocompletePlugin() {
   const [editor] = useLexicalComposerContext();
 
@@ -226,7 +213,6 @@ export function AutocompletePlugin() {
           return;
         }
 
-        // The suggestion is written like the text it follows, only fainter.
         const style: Record<string, string> = {};
 
         for (const property of [
@@ -273,8 +259,6 @@ export function AutocompletePlugin() {
         .catch((error) => console.debug("autocomplete: request failed", error));
     };
 
-    // Runs after every edit and move of the caret. Nothing changes while the
-    // caret is still after the same words.
     const handleUpdate = () =>
       editor.update(() => {
         const context = $contextAtCaret();
@@ -329,8 +313,6 @@ export function AutocompletePlugin() {
     };
 
     return mergeRegister(
-      // A suggestion that came with a saved document, or that undo brought
-      // back, is not one being offered now.
       editor.registerNodeTransform(AutocompleteNode, (node) => {
         if (node.getKey() !== ghost) {
           node.remove();

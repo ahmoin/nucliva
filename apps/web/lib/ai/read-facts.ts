@@ -7,11 +7,6 @@ import {
   type RawExtraction,
 } from "@/lib/editor/facts";
 
-// The part of the ripple a model does: reading a paragraph to say which facts
-// are in it, and rewriting a sentence that leans on a fact that has changed. It
-// never works anything out, and it does not make up ids. Reading values, the
-// arithmetic and the formatting are done in code, in lib/editor/facts.ts.
-
 const extractionSchema = z.object({
   dependents: z
     .array(
@@ -88,7 +83,6 @@ Answer:
 - label "Seed funding raised", mentions ["$4.2M"], sameAs null, derivedFrom null
 - label "Beta start date", mentions ["January 18"], sameAs null, derivedFrom "launch_date - 6 weeks"`;
 
-// What the model says about a paragraph, as it said it.
 export async function extractRaw({
   paragraph,
   table,
@@ -106,7 +100,6 @@ export async function extractRaw({
     ])) as RawExtraction;
 }
 
-// The facts in a paragraph, ready to be kept.
 export async function extractFacts(input: {
   paragraph: string;
   table: Fact[];
@@ -128,8 +121,6 @@ const rewriteSchema = z.object({
     .describe("The sentence, changed only as much as it needs to be"),
 });
 
-// A sentence that leans on a fact, made true again now that the fact has
-// changed. If it is still true as it is, it comes back as it was.
 export async function rewriteSentence({
   from,
   label,

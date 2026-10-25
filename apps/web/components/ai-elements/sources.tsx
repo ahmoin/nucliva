@@ -9,8 +9,6 @@ import {
 import { cn } from "@workspace/ui/lib/utils";
 import type { ComponentProps } from "react";
 
-// The Sources element from AI Elements: a fold-out list of the pages an answer
-// was written from.
 export type SourcesProps = ComponentProps<typeof Collapsible>;
 
 export const Sources = ({ className, ...props }: SourcesProps) => (

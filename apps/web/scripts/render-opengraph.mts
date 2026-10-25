@@ -1,8 +1,3 @@
-// Bakes scripts/opengraph-image.tsx into app/opengraph-image.png, which is the
-// file Next.js serves, and scripts/thumbnail-image.tsx into
-// public/brand/thumbnail.png, the Devpost thumbnail. Run it from apps/web after
-// changing either design:
-//
 //   pnpm dlx tsx scripts/render-opengraph.mts
 import { writeFileSync } from "node:fs";
 import { createRequire } from "node:module";
@@ -10,8 +5,7 @@ import { fileURLToPath } from "node:url";
 import Image from "./opengraph-image";
 import Thumbnail from "./thumbnail-image";
 
-// The design file uses JSX without importing React, as the app compiles it, so
-// give it React to use here.
+// The design files use JSX without importing React, so provide it globally.
 (globalThis as { React?: unknown }).React = createRequire(import.meta.url)(
   "react"
 );

@@ -14,7 +14,6 @@ export const getSearchTool = () =>
     tavilyApiKey: process.env.TAVILY_API_KEY,
   });
 
-// What the web says about a topic, as the pages that said it.
 export async function searchWeb(query: string): Promise<Source[]> {
   const response = await getSearchTool().invoke({ query });
 

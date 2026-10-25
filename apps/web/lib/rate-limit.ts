@@ -1,6 +1,4 @@
-// A small allowance of requests per key in a window of time, kept in memory.
-// Each server instance counts for itself, so this slows a runaway guest down
-// but is not a hard limit across all of them.
+// In-memory and per instance, so not a hard limit across instances.
 const hits = new Map<string, number[]>();
 
 export const HOUR = 60 * 60 * 1000;
@@ -18,7 +16,6 @@ export function allow(key: string, max: number, windowMs: number) {
   recent.push(now);
   hits.set(key, recent);
 
-  // Keep the map from growing without end on a busy instance.
   if (hits.size > 5000) {
     for (const [name, times] of hits) {
       if (times.every((time) => now - time >= windowMs)) {
@@ -30,8 +27,6 @@ export function allow(key: string, max: number, windowMs: number) {
   return true;
 }
 
-// Guests trying the sandbox get a smaller allowance of the requests that cost
-// money to answer. Returns a response to send back when they are over it.
 export function limitGuest(
   session: { user: { id: string; isAnonymous?: boolean | null } },
   bucket: string,

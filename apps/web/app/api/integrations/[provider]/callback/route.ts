@@ -9,11 +9,8 @@ import {
 } from "@/lib/knowledge/oauth";
 import { saveConnection, syncIntegration } from "@/lib/knowledge/sync";
 
-// The first sync runs after the redirect, for as long as the platform allows.
 export const maxDuration = 300;
 
-// Where the app sends the user back. The code it gives is traded for tokens,
-// and the first sync starts.
 export async function GET(
   request: Request,
   { params }: { params: Promise<{ provider: string }> }

@@ -25,9 +25,6 @@ export async function POST(request: Request) {
     return Response.json({ error: "prompt is required" }, { status: 400 });
   }
 
-  // A request that asks for research is grounded in a web search, unless the
-  // caller says one way or the other. A caller that has already searched, as
-  // the editor does to show progress, sends what it found.
   const research =
     typeof body?.research === "boolean" ? body.research : wantsResearch(prompt);
   const sources: Source[] | undefined = Array.isArray(body?.sources)

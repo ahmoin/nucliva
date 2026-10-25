@@ -5,9 +5,6 @@ import { detailOf, findSolution } from "@/lib/content/solutions";
 import { allow, HOUR } from "@/lib/rate-limit";
 import { createSandbox, embedAll } from "@/lib/sandbox/create";
 
-// Opens a solution for someone to try. A visitor without an account becomes a
-// guest first, and everyone gets a document of notes with the request for that
-// solution ready to send.
 export async function POST(request: Request) {
   const body = await request.json().catch(() => null);
   const solution =

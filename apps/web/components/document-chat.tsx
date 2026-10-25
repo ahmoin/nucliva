@@ -29,15 +29,9 @@ import {
 import { ChatMarkdown } from "@/components/chat-markdown";
 import type { Source } from "@/lib/ai/tavily";
 
-// A conversation is a tree of messages. Every message points at the one it
-// answers, so editing an earlier message or branching from it starts another
-// line beside the old one, and the old one is still there to go back to. What
-// is shown is the line from the first message to the head.
 export interface Message {
-  // How many changes to the document the answer suggested.
   changes?: number;
   id: string;
-  // Something worth saying about how the answer was made.
   notice?: string | null;
   parent: string | null;
   role: "assistant" | "user";
@@ -52,13 +46,9 @@ export interface Chat {
 
 const EMPTY: Chat = { head: null, messages: [] };
 
-// How something that turns up in the conversation arrives: it rises a few
-// pixels into place as it fades in. It does not move for a user who has asked
-// for less motion.
 export const ARRIVE =
   "ease-[cubic-bezier(0.23,1,0.32,1)] motion-safe:fade-in-0 motion-safe:slide-in-from-bottom-1 motion-safe:animate-in motion-safe:duration-200";
 
-// The line of messages from the first to the head.
 export function lineOf({ head, messages }: Chat) {
   const byId = new Map(messages.map((message) => [message.id, message]));
   const line: Message[] = [];
@@ -72,18 +62,15 @@ export function lineOf({ head, messages }: Chat) {
   return line;
 }
 
-// The messages that answer, or are the answer to, the same message as this one.
 export const alternatives = (chat: Chat, message: Message) =>
   chat.messages.filter(
     (other) => other.parent === message.parent && other.role === message.role
   );
 
-// The end of the newest line that goes on from a message.
 export function endOf(chat: Chat, id: string) {
   let current = id;
 
   for (;;) {
-    // The newest message that answers this one comes last in the list.
     const next = chat.messages
       .filter((message) => message.parent === current)
       .at(-1);
@@ -96,7 +83,6 @@ export function endOf(chat: Chat, id: string) {
   }
 }
 
-// A message and everything that follows from it.
 export function withoutBranch(chat: Chat, id: string): Chat {
   const gone = new Set([id]);
 
@@ -114,7 +100,6 @@ export function withoutBranch(chat: Chat, id: string): Chat {
   };
 }
 
-// The conversation of a document, kept in the browser with it.
 export function useChat(documentId: string) {
   const key = `nucliva-chat-${documentId}`;
   const [chat, setChat] = useState<Chat>(EMPTY);
@@ -128,7 +113,7 @@ export function useChat(documentId: string) {
         setChat(JSON.parse(stored));
       }
     } catch {
-      // Nothing kept, or nothing that can be read.
+      // Storage can be blocked or hold bad JSON; start with an empty chat.
     }
 
     setLoaded(true);
@@ -146,14 +131,13 @@ export function useChat(documentId: string) {
         localStorage.setItem(key, JSON.stringify(chat));
       }
     } catch {
-      // The conversation just is not kept.
+      // Storage can be blocked or full; the chat still works for this visit.
     }
   }, [chat, key, loaded]);
 
   return [chat, setChat] as const;
 }
 
-// Markdown as plain words.
 const plain = (markdown: string) =>
   markdown
     .replaceAll(/^#{1,6}\s+/gm, "")
@@ -161,19 +145,15 @@ const plain = (markdown: string) =>
     .replaceAll(/\[([^\]]+)\]\([^)\s]+\)/g, "$1");
 
 interface ChatMessageProps {
-  // Whether the message has just arrived, and rises into place.
   fresh: boolean;
   message: Message;
   onBranch: (id: string) => void;
   onDelete: (id: string) => void;
   onEdit: (id: string, text: string) => void;
-  // Which of the messages that could be here this one is, and how many.
   onSwitch: (id: string, step: number) => void;
   position: { count: number; index: number };
 }
 
-// One message, with what can be done with it when the pointer is on it: change
-// it and ask again, go on from it, copy it, delete it.
 export function ChatMessage({
   fresh,
   message,
@@ -401,7 +381,6 @@ export function ChatMessage({
   );
 }
 
-// The icon of a site, from the site itself.
 export function SiteIcon({
   className,
   url,

@@ -6,7 +6,6 @@ export const authClient = createAuthClient({
 
 export const { signIn, signOut, signUp, useSession, getSession } = authClient;
 
-// Signing in with an account somewhere else, and coming back to the app.
 export const signInWithGoogle = () =>
   authClient.signIn.social({ callbackURL: "/dashboard", provider: "google" });
 

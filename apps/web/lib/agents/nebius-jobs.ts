@@ -1,16 +1,10 @@
 import { createSign } from "node:crypto";
 
-// Runs the suite agent as a Nebius Serverless AI job: a container that starts,
-// does one run and stops. The container is built from agent.Dockerfile at the
-// root of the repository. See the README for how to set it up.
 const API = "https://api.nebius.cloud/ai/v1/jobs";
 const TOKEN_EXCHANGE = "https://auth.eu.nebius.com:443/oauth2/token/exchange";
-// Nebius gives tokens for 12 hours. One is made again a while before that.
 const TOKEN_LIFETIME = 11 * 60 * 60 * 1000;
 const GIB = 1024 ** 3;
 
-// The keys the container needs. With a MysteryBox secret set, they are read
-// from it, so they never show in the job's settings.
 const SECRET_KEYS = [
   "DATABASE_URL",
   "NEBIUS_API_KEY",
@@ -35,8 +29,6 @@ const base64url = (value: Buffer | string) =>
 
 let cached: { expires: number; token: string } | null = null;
 
-// A service account signs a short JWT with its authorized key and trades it
-// for an access token.
 async function accessToken() {
   if (cached && cached.expires > Date.now()) {
     return cached.token;
@@ -50,8 +42,7 @@ async function accessToken() {
   const claims = base64url(
     JSON.stringify({ exp: now + 300, iat: now, iss: account, sub: account })
   );
-  // A key pasted into an environment variable often has its line breaks
-  // written as \n.
+  // Env-pasted keys often have literal \n instead of line breaks.
   const key = (env("NEBIUS_PRIVATE_KEY") ?? "").replaceAll("\\n", "\n");
   const signature = createSign("RSA-SHA256")
     .update(`${header}.${claims}`)
@@ -104,7 +95,6 @@ function environment(runId: string) {
   return [{ name: "RUN_ID", value: runId }, ...secrets, ...plain];
 }
 
-// Starts a job for the run, and returns the job's ID.
 export async function createAgentJob(runId: string) {
   const response = await fetch(API, {
     body: JSON.stringify({
@@ -118,10 +108,9 @@ export async function createAgentJob(runId: string) {
         image: env("NEBIUS_AGENT_IMAGE"),
         platform: env("NEBIUS_AGENT_PLATFORM") ?? "cpu-d3",
         preset: env("NEBIUS_AGENT_PRESET") ?? "4vcpu-16gb",
-        // It reaches the database and the model APIs over the internet.
         publicIp: true,
         subnetId: env("NEBIUS_SUBNET_ID"),
-        // The shortest timeout Nebius allows. A run takes minutes.
+        // Shortest timeout Nebius allows.
         timeout: "3600s",
       },
     }),
@@ -147,7 +136,6 @@ export async function createAgentJob(runId: string) {
   return operation.resourceId;
 }
 
-// What the job is doing, like PROVISIONING, RUNNING or FAILED.
 export async function agentJobState(jobId: string) {
   const response = await fetch(`${API}/${encodeURIComponent(jobId)}`, {
     headers: { Authorization: `Bearer ${await accessToken()}` },
@@ -162,5 +150,4 @@ export async function agentJobState(jobId: string) {
   return job.status?.state ?? null;
 }
 
-// States a job does not come back from.
 export const ENDED_STATES = new Set(["CANCELLED", "COMPLETED", "ERROR", "FAILED"]);

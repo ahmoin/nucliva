@@ -59,18 +59,8 @@ import {
   valueIn,
 } from "@/lib/editor/facts";
 
-// The ripple. When a fact in the document is changed, the other places that
-// state it are changed to match, at once, with nothing to accept. Every ripple
-// goes in a log saved with the document, where it can be put back, and the
-// usual undo takes it back too. See lib/editor/facts.ts for how the new values
-// are worked out. This file is the part that knows about the editor: it reads
-// paragraphs for facts in the background, notices when one is changed, and
-// changes the other places.
-
 export const RIPPLE_PREFIX = "ripple:";
 const PREFIX = RIPPLE_PREFIX;
-// How long a paragraph is left alone before it is read, and how long an edited
-// fact is left alone before it counts as changed.
 const READ_AFTER = 1000;
 const SETTLE_AFTER = 1200;
 const MAX_PARAGRAPH = 3000;
@@ -78,14 +68,11 @@ const MAX_REWRITES = 6;
 const MAX_FACTS_SENT = 60;
 const REQUEST_TIMEOUT = 20_000;
 const PAUSE_AFTER_FAILURES = 60_000;
-// One at a time, so each paragraph is read knowing the facts of the ones read
-// before it. Two read together cannot see each other, and the same fact
-// written two ways ends up as two facts.
+// Must stay 1: parallel reads cannot see each other's facts and duplicate them.
 const READS_AT_ONCE = 1;
 
 type Timer = ReturnType<typeof setTimeout>;
 
-// What the document knows about its facts. It is saved with the document.
 export class FactStore {
   data: FactData;
   private readonly listeners = new Set<() => void>();
@@ -135,16 +122,12 @@ const $isLeaf = (node: LexicalNode | null): node is ElementNode =>
     .getChildren()
     .some((child) => $isTextNode(child) || $isElementNode(child));
 
-// Whether a suggestion is waiting in a block, on the block or on its words.
 const $busy = (node: ElementNode) =>
   $getState(node, suggestionState) !== null ||
   node
     .getAllTextNodes()
     .some((text) => $getState(text, suggestionState) !== null);
 
-// The blocks that hold text directly: paragraphs, headings, list items and
-// the like, in document order. A block with a suggestion waiting in it is busy,
-// and is left alone until that is settled.
 function $leaves(): Leaf[] {
   const leaves: Leaf[] = [];
 
@@ -179,7 +162,6 @@ interface Caret {
 
 type Point = RangeSelection["anchor"];
 
-// Where a point of the selection is: the block, and how far into its text.
 function $pointAt(point: Point): Caret | null {
   const block = $blockOf(point.getNode());
 
@@ -208,8 +190,6 @@ function $pointAt(point: Point): Caret | null {
   return { key: block.getKey(), offset: node.is(block) ? before : 0 };
 }
 
-// Where the caret is. A selection inside one block counts as a caret at its
-// start, since a number is often changed by selecting it and typing over it.
 function $caret(): Caret | null {
   const selection = $getSelection();
 
@@ -235,7 +215,6 @@ function $caret(): Caret | null {
 const $rippleChanges = () =>
   $changes().filter((change) => change.id.startsWith(PREFIX));
 
-// The fact being edited: where it is, and what it said when the caret came in.
 interface Active {
   before: string;
   end: number;
@@ -248,7 +227,6 @@ interface Active {
 }
 
 interface Edit {
-  // The words the new value takes up in the paragraph, which are left alone.
   end: number;
   factId: string;
   from: string;
@@ -268,8 +246,6 @@ interface Rewrite extends Target {
   next: string;
 }
 
-// A request that is given up on when it takes too long, or when the editor is
-// gone and nobody is waiting for the answer.
 const post = (url: string, body: unknown, gone: AbortSignal) =>
   fetch(url, {
     body: JSON.stringify(body),
@@ -278,7 +254,6 @@ const post = (url: string, body: unknown, gone: AbortSignal) =>
     signal: AbortSignal.any([AbortSignal.timeout(REQUEST_TIMEOUT), gone]),
   });
 
-// The fact the caret is in, if it is in one.
 function $factAt(caret: Caret, store: FactStore): Active | null {
   const node = $getNodeByKey(caret.key);
 
@@ -311,13 +286,10 @@ function $factAt(caret: Caret, store: FactStore): Active | null {
 }
 
 interface Change {
-  // The words now where the fact was, and everything the edit replaced.
   text: string;
   written: string;
 }
 
-// What the fact being edited says now, if the paragraph was changed only in
-// the fact. A paragraph changed anywhere else is left alone.
 function $changeOf(done: Active): (Change & { after: string }) | null {
   const block = $getNodeByKey(done.key);
 
@@ -340,8 +312,6 @@ function $changeOf(done: Active): (Change & { after: string }) | null {
   return { after, text: valueIn(written) ?? written, written };
 }
 
-// The sentences made true again by the model. Only where the paragraph is
-// still the one the sentence was read from. Returns what each one said before.
 function $applyRewrites(rewrites: (Rewrite | null)[], run: string) {
   const before = new Map<string, string>();
   let counter = 0;
@@ -364,9 +334,6 @@ function $applyRewrites(rewrites: (Rewrite | null)[], run: string) {
   return before;
 }
 
-// The changes a run made are worked out as suggestions, then put in at once,
-// with nothing to accept: a fact changed in one place is changed everywhere.
-// Returns each place that changed, as it was and as it is now.
 function $settleRun(run: string, before: Map<string, string>) {
   const ids = $changes()
     .filter((change) => change.id.startsWith(`${PREFIX}${run}:`))
@@ -382,7 +349,6 @@ function $settleRun(run: string, before: Map<string, string>) {
   });
 }
 
-// Writes a ripple into the log, or adds places to one already there.
 function logged(
   data: FactData,
   entry: Omit<RippleEntry, "places" | "reverted">,
@@ -400,8 +366,6 @@ function logged(
   return { ...data, log: log.slice(-MAX_LOG) };
 }
 
-// Puts back what a ripple changed, in every place that still says what the
-// ripple wrote. Returns how many places it put back.
 export function revertRipple(
   editor: LexicalEditor,
   store: FactStore,
@@ -453,7 +417,6 @@ export function revertRipple(
   return undone;
 }
 
-// What was just changed, shown over the paragraph that set it off.
 interface Notice {
   count: number;
   id: string;
@@ -466,7 +429,6 @@ interface Show {
   notice: (notice: Notice) => void;
 }
 
-// The part that knows about the editor, kept apart from React.
 class Ripple {
   private active: Active | null = null;
   private failures = 0;
@@ -490,7 +452,6 @@ class Ripple {
 
   start() {
     const stopWatching = this.editor.registerUpdateListener(this.onUpdate);
-    // Paragraphs that were never read, in a document that was just opened.
     const first = setTimeout(() => this.readAll(), 1500);
 
     return () => {
@@ -508,8 +469,6 @@ class Ripple {
       stopWatching();
     };
   }
-
-  // ----- Reading paragraphs for facts, in the background -----
 
   private pump() {
     while (this.running < READS_AT_ONCE && this.queue.length > 0) {
@@ -536,8 +495,6 @@ class Ripple {
       this.failures >= 3 ? Date.now() + PAUSE_AFTER_FAILURES : 0;
   }
 
-  // Reading is best effort. When the request fails or is slow, the document
-  // works just the same, and nothing is shown.
   private async read({ text }: { hash: string; text: string }) {
     if (this.lifetime.signal.aborted || Date.now() < this.pausedUntil) {
       return;
@@ -599,8 +556,6 @@ class Ripple {
     this.pump();
   }
 
-  // A paragraph that has been left alone for a moment is read, if it has a
-  // fact in it and has not been read before.
   private schedule(key: string) {
     clearTimeout(this.timers.get(key));
     this.timers.set(
@@ -628,10 +583,6 @@ class Ripple {
     });
   }
 
-  // ----- Changing a fact -----
-
-  // The other places that state it are changed to match, and the change goes
-  // in the log, where it can be put back.
   private ripple(edit: Edit) {
     const run = crypto.randomUUID().slice(0, 8);
     const outcome = { places: 0, touched: new Set<string>() };
@@ -674,7 +625,6 @@ class Ripple {
     run: string,
     outcome: { places: number; touched: Set<string> }
   ) {
-    // A ripple that was not settled is made over, from this change.
     const old = $rippleChanges().map((change) => change.id);
 
     if (old.length > 0) {
@@ -724,8 +674,6 @@ class Ripple {
     );
   }
 
-  // Sentences that lean on a fact without stating it, in paragraphs with no
-  // other suggestions in them.
   private targets(edit: Edit, touched: Set<string>): Target[] {
     return this.editor.getEditorState().read(() =>
       $leaves()
@@ -772,8 +720,6 @@ class Ripple {
     }
   }
 
-  // The model rewrites sentences that lean on the fact, and they go in with the
-  // rest of the ripple, in the same entry of the log.
   private async rewrite(edit: Edit, run: string, touched: Set<string>) {
     const fact = this.store.data.facts.find((item) => item.id === edit.factId);
     const targets = this.targets(edit, touched);
@@ -799,8 +745,6 @@ class Ripple {
     });
   }
 
-  // The fact the caret is in has been left, or has not been touched for a
-  // moment: if what it says has changed, that is a change to the fact.
   private finish(done: Active, keep: boolean) {
     this.editor.getEditorState().read(() => {
       const change = $changeOf(done);
@@ -831,14 +775,12 @@ class Ripple {
           value: parsed.value,
         };
 
-        // Out of this callback, which only reads, and into an update.
+        // Deferred: this runs inside a read, which cannot start an update.
         setTimeout(() => this.ripple(edit), 0);
       }
     });
   }
 
-  // The fact goes on being edited, so what it says now is where the next
-  // change is measured from.
   private rebase(
     done: Active,
     change: Change & { after: string },
@@ -865,8 +807,6 @@ class Ripple {
     }, SETTLE_AFTER);
   }
 
-  // ----- Watching the editor -----
-
   private $scheduleDirty(dirty: Map<string, unknown>) {
     for (const key of dirty.keys()) {
       if ($isLeaf($getNodeByKey(key))) {
@@ -875,7 +815,6 @@ class Ripple {
     }
   }
 
-  // The caret has gone out of the fact, or the paragraph has: that ends it.
   private $leave(caret: Caret | null, edited: boolean) {
     const { active } = this;
 
@@ -929,7 +868,6 @@ class Ripple {
   };
 }
 
-// How long the note about a ripple stays up.
 const NOTICE_FOR = 8000;
 
 const plural = (count: number, one: string) =>
@@ -947,7 +885,6 @@ export function RipplePlugin({ store }: { store: FactStore }) {
     [editor, store]
   );
 
-  // The note goes away by itself after a moment.
   useEffect(() => {
     if (!notice) {
       return;
@@ -958,7 +895,6 @@ export function RipplePlugin({ store }: { store: FactStore }) {
     return () => clearTimeout(timer);
   }, [notice]);
 
-  // The note sits over the paragraph that was edited.
   useLayoutEffect(() => {
     if (!notice) {
       setPlace(null);
@@ -977,8 +913,6 @@ export function RipplePlugin({ store }: { store: FactStore }) {
 
       const box = element.getBoundingClientRect();
 
-      // Above the paragraph, so that it does not cover the lines under it,
-      // which are the ones that changed. It stays on the screen.
       setPlace({
         left: Math.max(8, box.left),
         top: Math.min(Math.max(8, box.top - 38), window.innerHeight - 44),
@@ -1048,7 +982,6 @@ const ago = (at: number) => {
       });
 };
 
-// Every ripple in the document, newest first, each with a way to put it back.
 export function RippleLog({
   onOpen,
   store,

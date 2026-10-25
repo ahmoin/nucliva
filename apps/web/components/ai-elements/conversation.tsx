@@ -7,8 +7,6 @@ import type { ComponentProps } from "react";
 import { useCallback } from "react";
 import { StickToBottom, useStickToBottomContext } from "use-stick-to-bottom";
 
-// The Conversation element from AI Elements: a scrolling log that follows new
-// messages down, unless the reader has scrolled up, and offers a way back.
 export type ConversationProps = ComponentProps<typeof StickToBottom>;
 
 export const Conversation = ({ className, ...props }: ConversationProps) => (

@@ -40,7 +40,6 @@ const FONT_PROPERTIES = ["font-family", "font-size", "font-weight"];
 const countPages = (root: HTMLElement) =>
   Math.max(1, Math.ceil((root.clientHeight - PAGE_PITCH) / PAGE_PITCH));
 
-// A font as inline CSS: the one an element shows, with any overrides on top.
 const fontOf = (
   style: CSSStyleDeclaration,
   overrides: Record<string, string> = {}
@@ -50,8 +49,6 @@ const fontOf = (
       `${property}:${overrides[property] ?? style.getPropertyValue(property)}`
   ).join(";");
 
-// How far the top and bottom of a character move when it switches from one
-// font to another without leaving its line.
 function fontShift(layer: HTMLElement, from: string, to: string) {
   const probe = document.createElement("div");
   const before = probe.appendChild(document.createElement("span"));
@@ -96,14 +93,10 @@ function revealCaret(root: HTMLElement) {
   }
 }
 
-// The document stays one continuous flow. A full-width float sits where each
-// page ends, and since text cannot overlap a float, the browser itself moves
-// every line that would cross a page boundary onto the next page.
 export function DocumentPages({
   change,
   scale,
 }: {
-  // Which of the AI's changes has its Accept and Reject buttons showing.
   change: number;
   scale: number;
 }) {
@@ -125,9 +118,6 @@ export function DocumentPages({
   useTabStops();
   useSuggestionMarks();
 
-  // Inside text the browser draws the caret in the font of that text, even
-  // when the next character will be typed in another one. A caret of our own
-  // stands in then, sized and placed for the font about to be typed.
   useEffect(() => {
     const sync = () => {
       const layer = layerRef.current;
@@ -160,8 +150,6 @@ export function DocumentPages({
         return;
       }
 
-      // Text typed here drops the font of the text beside it and starts again
-      // from the block's, with the pending choices on top.
       const shift = fontShift(
         layer,
         fontOf(getComputedStyle(element)),
@@ -183,8 +171,6 @@ export function DocumentPages({
     );
   }, [editor, scale]);
 
-  // Every added page adds a break that pushes the text further down, so
-  // measure again until the count settles.
   useLayoutEffect(() => {
     const root = editor.getRootElement();
 
@@ -215,8 +201,6 @@ export function DocumentPages({
     return () => observer.disconnect();
   }, [editor]);
 
-  // Only the text is scaled. The pages are drawn at their final size instead,
-  // so their border stays one sharp pixel at every zoom level.
   return (
     <div
       className="relative mx-auto"
@@ -229,7 +213,6 @@ export function DocumentPages({
           style={{ height: PAGE_HEIGHT * scale, top: top * scale }}
         />
       ))}
-      {/* Pages are white in every theme, so the text on them always uses the light palette. */}
       <div
         className="light flow-root overflow-clip text-foreground"
         ref={layerRef}
@@ -255,7 +238,6 @@ export function DocumentPages({
             </Fragment>
           ))}
         </div>
-        {/* An empty line has no width, so it would fit beside a page break and hide there. Empty blocks get a width of their own so they move past it too. */}
         <ContentEditable
           aria-label="Document"
           className={cn(
@@ -279,7 +261,6 @@ export function DocumentPages({
           scale={scale}
         />
       </div>
-      {/* Blocks with a border or background run through the page breaks, so the margins and gaps are painted over them. */}
       <div aria-hidden className="pointer-events-none absolute inset-0">
         {tops.slice(1).map((top) => (
           <div
@@ -288,7 +269,6 @@ export function DocumentPages({
             style={{ height: PAGE_GAP * scale, top: (top - PAGE_GAP) * scale }}
           />
         ))}
-        {/* The border sits inside the page: a page that fills the full width would have an outer one cut off. */}
         {tops.map((top) => (
           <div
             className="absolute inset-x-0 border-white outline -outline-offset-1 outline-black/10"

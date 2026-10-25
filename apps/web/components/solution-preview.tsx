@@ -6,9 +6,6 @@ const added = "bg-emerald-500/60";
 const removed =
   "relative bg-red-500/40 after:absolute after:inset-x-0 after:top-1/2 after:h-px after:bg-red-500";
 
-// What asking Nucliva looks like: the words someone typed, and under them the
-// start of the file that comes back, with the changes it made marked in green
-// and red like the suggestions in the editor.
 export function SolutionPreview({
   className,
   kind,

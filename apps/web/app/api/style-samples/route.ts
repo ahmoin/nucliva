@@ -7,8 +7,6 @@ import { limitGuest } from "@/lib/rate-limit";
 
 const MAX_SAMPLE = 20_000;
 
-// A piece of the user's own writing, kept to show what it says and embedded so
-// drafts can be written in its voice.
 export async function POST(request: Request) {
   const session = await auth.api.getSession({ headers: await headers() });
 

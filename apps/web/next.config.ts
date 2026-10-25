@@ -1,7 +1,5 @@
 import type { NextConfig } from "next";
 
-// A request that asks for Markdown, as agents and tools do, gets the Markdown
-// version of the page at the normal address.
 const wantsMarkdown = [
   { key: "accept", type: "header" as const, value: ".*text/markdown.*" },
 ];
@@ -11,8 +9,7 @@ const sitePages = `features|built-with|solutions|${legalPages}`;
 
 const nextConfig: NextConfig = {
   async headers() {
-    // The same address can answer with a page or with Markdown, so caches
-    // have to keep the two apart.
+    // Same URL serves HTML or Markdown, so caches must vary on Accept.
     return [
       "/",
       `/:page(${sitePages})`,
@@ -27,10 +24,8 @@ const nextConfig: NextConfig = {
     return {
       afterFiles: [],
       beforeFiles: [
-        // The address of a page with .md on the end.
         { destination: "/md/home", source: "/.md" },
         { destination: "/md/:path+", source: "/:path+.md" },
-        // The normal address, from someone who asks for Markdown.
         { destination: "/md/home", has: wantsMarkdown, source: "/" },
         {
           destination: "/md/:page",

@@ -4,8 +4,6 @@ import Link from "next/link";
 import { KeyHint } from "@/components/hotkeys";
 import { Wordmark } from "@/components/logo";
 
-// The keys that take a visitor to signing in or signing up, from any page that
-// shows this header.
 export const siteHotkeys = {
   l: "/login",
   s: "/signup",

@@ -46,15 +46,9 @@ import { DOCUMENT_TRANSFORMERS } from "@/components/document-table";
 import type { Edit } from "@/lib/ai/style-engine";
 import type { Source } from "@/lib/ai/tavily";
 
-// Changes the AI proposes are made in the document itself, and wait there to be
-// accepted or rejected. A block, or a few words in one, is either new ("add")
-// or about to go ("remove"). The parts of one change share an id, so a replaced
-// block and the text that replaces it, or a word and the word that takes its
-// place, are accepted or rejected together.
 interface Suggestion {
   id: string;
   kind: "add" | "remove";
-  // A change the editor is less sure of, shown more quietly.
   soft?: boolean;
 }
 
@@ -75,11 +69,9 @@ export const suggestionState = createState("suggestion", {
 
 export interface Change {
   id: string;
-  // The blocks or words of the change, in the order they come in the document.
   keys: NodeKey[];
 }
 
-// Every block or piece of text with a suggestion on it, in document order.
 function $suggested() {
   return $dfs().flatMap(({ node }) => {
     const suggestion = $getState(node, suggestionState);
@@ -104,8 +96,6 @@ export function $changes() {
   return changes;
 }
 
-// Accepting keeps new text and drops text marked to go. Rejecting does the
-// opposite. With no ids, every change is settled.
 export function $resolve(ids: Set<string> | null, accept: boolean) {
   for (const { node, suggestion } of $suggested()) {
     if (ids && !ids.has(suggestion.id)) {
@@ -124,8 +114,6 @@ export function $resolve(ids: Set<string> | null, accept: boolean) {
   }
 }
 
-// Words with their format, so that a change to a few of them can be shown in
-// place and the rest of the text keeps what it had.
 interface Run {
   format: number;
   style: string;
@@ -135,7 +123,6 @@ interface Run {
 const $runs = (block: ElementNode): Run[] | null => {
   const children = block.getChildren();
 
-  // A block with a link or a line break in it is replaced whole instead.
   return children.every($isTextNode)
     ? children.map((node) => ({
         format: node.getFormat(),
@@ -145,7 +132,6 @@ const $runs = (block: ElementNode): Run[] | null => {
     : null;
 };
 
-// The part of a block's text from one place to another, as runs.
 function slice(runs: Run[], from: number, to: number) {
   const parts: Run[] = [];
   let at = 0;
@@ -164,7 +150,6 @@ function slice(runs: Run[], from: number, to: number) {
   return parts;
 }
 
-// What changed between two texts, word by word.
 function diffWords(before: string, after: string) {
   const tokens = (text: string) => text.match(/\s+|[^\s]+/g) ?? [];
   const a = tokens(before);
@@ -174,7 +159,6 @@ function diffWords(before: string, after: string) {
     return null;
   }
 
-  // The longest run of words the two texts share, worked out from the end.
   const common = Array.from({ length: a.length + 1 }, () =>
     new Array<number>(b.length + 1).fill(0)
   );
@@ -202,7 +186,6 @@ function diffWords(before: string, after: string) {
       (j === b.length ||
         (common[i + 1]?.[j] ?? 0) >= (common[i]?.[j + 1] ?? 0))
     ) {
-      // Words that go come before the words that replace them.
       steps.push({ kind: "remove", text: a[i] ?? "" });
       i += 1;
     } else {
@@ -211,7 +194,6 @@ function diffWords(before: string, after: string) {
     }
   }
 
-  // Neighboring steps of one kind are one.
   const merged: typeof steps = [];
 
   for (const step of steps) {
@@ -229,10 +211,6 @@ function diffWords(before: string, after: string) {
   return { changed: changed / Math.max(1, a.length + b.length), steps: merged };
 }
 
-// Changes only the words that differ between a block and what it should say,
-// each as a change of its own, and leaves the rest of the block alone. This is
-// for a rewrite that touches a few words; it says no when most of the text
-// differs, or the block is more than text, and the block is replaced whole.
 function $diffInPlace(
   block: ElementNode,
   fresh: ElementNode,
@@ -266,8 +244,6 @@ function $diffInPlace(
     );
 
     if (step.kind === "equal") {
-      // Words between two changes end the change before them. A space does
-      // not: "Q3" becoming "Quarter 3" is one change.
       if (open && step.text.trim()) {
         id = newId();
         open = false;
@@ -311,9 +287,6 @@ function $diffInPlace(
   return hunks.size;
 }
 
-// A block's text as pieces with their places in it, counted the way the text of
-// the block counts: a line break is one character, and a link's text is part of
-// the block's.
 export function $segments(block: ElementNode) {
   const segments: { end: number; node: LexicalNode; start: number }[] = [];
   let at = 0;
@@ -338,17 +311,12 @@ export function $segments(block: ElementNode) {
 
 export interface Span {
   end: number;
-  // The change this belongs to. Each span is a change of its own.
   id: string;
   soft?: boolean;
   start: number;
   text: string;
 }
 
-// Shows words in a block being replaced by other words: the old ones as going
-// and the new ones as coming, each pair a change of its own. The rest of the
-// block is left as it was, with the new words in the format of the old. A span
-// that runs over something other than text is skipped. Says how many it did.
 export function $replaceSpans(block: ElementNode, spans: Span[]) {
   let done = 0;
 
@@ -415,9 +383,6 @@ export function $replaceSpans(block: ElementNode, spans: Span[]) {
   return done;
 }
 
-// A block with some of its words changed to say something else, shown as the
-// words that differ and not as a block taken out and put back. The new text
-// takes the format of the start of the block. Says how many changes it made.
 export function $suggestRewrite(
   block: ElementNode,
   text: string,
@@ -436,7 +401,6 @@ export function $suggestRewrite(
   return $diffInPlace(block, fresh, options) ?? 0;
 }
 
-// A mark like [2] in the text becomes a link to the second source.
 function $linkCitations(blocks: ElementNode[], sources: Source[]) {
   for (const node of blocks.flatMap((block) => block.getAllTextNodes())) {
     if ($isLinkNode(node.getParent())) {
@@ -466,9 +430,6 @@ function $linkCitations(blocks: ElementNode[], sources: Source[]) {
   }
 }
 
-// Markdown as the document's own blocks. The first big heading of a document
-// that has nothing yet is its title, and the levels the document has no style
-// for are its smallest heading.
 function $blocksFromMarkdown(
   markdown: string,
   sources: Source[],
@@ -507,21 +468,14 @@ const sourcesMarkdown = (sources: Source[]) =>
     )
     .join("\n")}`;
 
-// Puts the edits in the document as changes waiting to be settled. Blocks are
-// named by their place in the document as it was when the request was made.
-// The text carries its sources, as numbered links and a list at the end, only
-// when it was asked to. Otherwise any such marks the model left are taken out,
-// and the sources are shown beside the document instead.
 export function $applyEdits(edits: Edit[], found: Source[], cite: boolean) {
   const sources = cite ? found : [];
   const root = $getRoot();
   const existing = root.getChildren();
   const last = existing.length - 1;
-  // The new blocks that go after each existing one, and -1 for the start.
   const after = new Map<number, ElementNode[]>();
   const flags: [LexicalNode, Suggestion][] = [];
   let added = 0;
-  // Words changed inside blocks, which are changes of their own.
   let inPlace = 0;
 
   const insertAfter = (at: number, blocks: ElementNode[], id: string) => {
@@ -557,8 +511,6 @@ export function $applyEdits(edits: Edit[], found: Source[], cite: boolean) {
         : [];
     const fresh = created[0];
 
-    // A rewrite of a block that changes a few of its words shows just those
-    // words, instead of a block taken out and the same block put back.
     const hunks =
       edit.action === "replace" &&
       target &&
@@ -581,10 +533,6 @@ export function $applyEdits(edits: Edit[], found: Source[], cite: boolean) {
     }
 
     if (created.length > 0) {
-
-      // Every new block is a change of its own, so each can be accepted or
-      // rejected alone. The first block of a replacement goes with the block it
-      // replaces, as one change.
       created.forEach((block, index) =>
         insertAfter(
           at,
@@ -595,7 +543,6 @@ export function $applyEdits(edits: Edit[], found: Source[], cite: boolean) {
     }
   }
 
-  // The list of where the text came from goes at the end, as a change of its own.
   if (sources.length > 0 && added > 0) {
     insertAfter(
       last,
@@ -614,11 +561,9 @@ export function $applyEdits(edits: Edit[], found: Source[], cite: boolean) {
     $setState(block, suggestionState, suggestion);
   }
 
-  // How many changes there are to settle.
   return new Set(flags.map(([, suggestion]) => suggestion.id)).size + inPlace;
 }
 
-// A block as the Markdown that would make it.
 function $blockText(block: LexicalNode) {
   if ($isHeadingNode(block)) {
     return `${"#".repeat(Number(block.getTag().slice(1)))} ${block.getTextContent()}`;
@@ -652,14 +597,12 @@ function $blockText(block: LexicalNode) {
     : block.getTextContent();
 }
 
-// What the document says in each top-level block, for the AI to point at.
 export function $documentBlocks() {
   return $getRoot()
     .getChildren()
     .map((block) => $blockText(block).slice(0, 1200));
 }
 
-// The changes waiting in the document.
 export function useChanges() {
   const [editor] = useLexicalComposerContext();
   const [changes, setChanges] = useState<Change[]>([]);
@@ -683,7 +626,6 @@ export function useChanges() {
   return changes;
 }
 
-// Shows each block of a change as new or as going, in green or in red.
 export function useSuggestionMarks() {
   const [editor] = useLexicalComposerContext();
 
@@ -694,7 +636,6 @@ export function useSuggestionMarks() {
           const node = $getNodeByKey(key);
           const element = editor.getElementByKey(key);
           const suggestion = node ? $getState(node, suggestionState) : null;
-          // Words in a block are marked differently from a whole block.
           const attribute = $isTextNode(node)
             ? "suggestionText"
             : "suggestion";
@@ -736,12 +677,8 @@ export function useSuggestionMarks() {
   }, [editor]);
 }
 
-// How far above a change its buttons go: their own height and a little room.
 const BUTTONS_HEIGHT = 30;
 
-// Accept and Reject for the change the navigator is on, next to the change.
-// Only one change has them at a time, so a long answer does not fill the page
-// with buttons.
 export function SuggestionButtons({
   current,
   layer,
@@ -749,10 +686,8 @@ export function SuggestionButtons({
   pitch,
   scale,
 }: {
-  // Which change the navigator is on, counting from 0.
   current: number;
   layer: RefObject<HTMLElement | null>;
-  // The top margin of a page, and how far one page starts below the one before.
   margin: number;
   pitch: number;
   scale: number;
@@ -780,8 +715,6 @@ export function SuggestionButtons({
 
       if (box && element) {
         const top = (element.getBoundingClientRect().top - box.top) / scale;
-        // The buttons sit just above the change, but never in the margin at
-        // the top of a page: the page covers it, and they would be hidden.
         const pageText = Math.floor(top / pitch) * pitch + margin;
 
         next[shownId] = Math.max(top - BUTTONS_HEIGHT, pageText);
@@ -801,8 +734,6 @@ export function SuggestionButtons({
     return () => observer.disconnect();
   }, [editor, layer, margin, pitch, scale, shownId, shownKey]);
 
-  // When the buttons move to another change, because one was settled or the
-  // arrows were used, the document follows them.
   useEffect(() => {
     if (shownId && shownId !== seen.current) {
       editor

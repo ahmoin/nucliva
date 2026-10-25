@@ -30,7 +30,6 @@ const description =
 
 export const metadata: Metadata = {
   description,
-  // Relative URLs, like the share image, are resolved against this.
   metadataBase: new URL(siteUrl),
   openGraph: {
     description,

@@ -9,8 +9,6 @@ import {
 import { cn } from "@workspace/ui/lib/utils";
 import type { ComponentProps } from "react";
 
-// The Task element from AI Elements: a step of work with what it found or did
-// folded under it.
 export type TaskItemFileProps = ComponentProps<"div">;
 
 export const TaskItemFile = ({

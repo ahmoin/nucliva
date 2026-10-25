@@ -65,8 +65,6 @@ export default async function Page() {
     .select()
     .from(integrations)
     .where(eq(integrations.userId, userId));
-  // Files in the workspace that were indexed, and sources brought in from
-  // outside, in one list.
   const indexedFiles = await db
     .select({
       chunks: count(vectorEmbeddings.id),

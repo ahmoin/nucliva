@@ -1,11 +1,7 @@
-// What Nucliva is for. Each solution is a kind of writing it takes off your
-// hands, and belongs to the line of work that does it most.
-
 export type Kind = "Doc" | "Sheet" | "Slides";
 
 export interface Category {
   blurb: string;
-  // The color of the dot beside its name.
   dot: string;
   name: string;
   slug: string;
@@ -249,7 +245,6 @@ export const solutions: Solution[] = [
   },
 ];
 
-// What to say to get one, and what comes back. Shown on the page of a solution.
 export interface Detail {
   includes: string[];
   prompt: string;
@@ -489,6 +484,5 @@ export const findSolution = (category: string, slug: string) =>
 
 export const detailOf = (slug: string): Detail | undefined => details[slug];
 
-// Where a solution lives, under the line of work it belongs to.
 export const solutionPath = (solution: Solution) =>
   `/solutions/${solution.category}/${solution.slug}`;

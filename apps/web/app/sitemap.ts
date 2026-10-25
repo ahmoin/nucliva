@@ -2,8 +2,6 @@ import type { MetadataRoute } from "next";
 import { categories, solutionPath, solutions } from "@/lib/content/solutions";
 import { siteUrl } from "@/lib/site";
 
-// Every public page: the site itself, the legal pages, and a page for each
-// line of work and each solution.
 export default function sitemap(): MetadataRoute.Sitemap {
   const pages = [
     "",

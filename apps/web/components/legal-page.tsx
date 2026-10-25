@@ -7,8 +7,6 @@ import { contactEmail, legalUpdated } from "@/lib/site";
 const enter =
   "motion-safe:fade-in motion-safe:slide-in-from-bottom-4 motion-safe:animate-in motion-safe:fill-mode-both motion-safe:duration-700 motion-safe:ease-out";
 
-// The frame the legal pages share: the site header and footer around one
-// readable column of text.
 export function LegalPage({
   children,
   intro,
@@ -64,7 +62,6 @@ export function LegalPage({
   );
 }
 
-// One heading and the text under it.
 export function LegalSection({
   children,
   title,

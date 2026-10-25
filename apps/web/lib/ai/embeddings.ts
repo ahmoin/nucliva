@@ -29,7 +29,6 @@ export async function ingestText({
 }: {
   documentId?: string;
   kind: (typeof vectorEmbeddings.$inferInsert)["kind"];
-  // The knowledge base source the text came from, when it came from one.
   sourceId?: string;
   text: string;
   userId: string;

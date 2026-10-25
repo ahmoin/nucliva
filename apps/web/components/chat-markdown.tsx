@@ -1,9 +1,5 @@
 import type { ReactNode } from "react";
 
-// A message arrives as Markdown. This shows the parts a conversation uses:
-// headings, bullets and numbers, bold, italics, code and links. Anything else
-// stays as the text it is.
-
 const inlinePattern =
   /(\*\*(?<bold>[^*]+)\*\*|\*(?<italic>[^*]+)\*|`(?<code>[^`]+)`|\[(?<label>[^\]]+)\]\((?<href>[^)\s]+)\))/g;
 

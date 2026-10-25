@@ -4,12 +4,8 @@ import type {
   SandboxSheet,
 } from "@/lib/sandbox/data";
 
-// The rest of a sandbox workspace: dozens of ordinary files that a real
-// account would have piled up over a year. They are made from templates, with
-// the same result every time, so the workspace is always the same place.
 interface Spec {
   deckTitles: string[];
-  // How many files the workspace has in all, hand-written ones included.
   total: number;
   lines: string[];
   names: string[];
@@ -502,7 +498,6 @@ const MONTHS = [
 ];
 const DAY = 24 * 60 * 60 * 1000;
 
-// A small, repeatable source of numbers, so a workspace is the same each time.
 function random(seed: number) {
   let state = seed;
 
@@ -525,8 +520,6 @@ export interface Filled {
   sheets: (SandboxSheet & { starred?: boolean })[];
 }
 
-// The ordinary files to put around the hand-written ones, so that the whole
-// workspace has about the number of files the line of work calls for.
 export function fillWorkspace(category: string, written: number): Filled {
   const spec = specs[category];
   const empty: Filled = { decks: [], docs: [], sheets: [] };
@@ -544,8 +537,6 @@ export function fillWorkspace(category: string, written: number): Filled {
   const now = Date.now();
   const used = new Set<string>();
 
-  // Each file has a day it was last changed, spread over about a year, and the
-  // month of that day goes in its title.
   const make = (index: number, total: number, templates: string[]) => {
     const days = 1 + Math.round(((index + next() * 0.8) / total) * 330);
     const month = MONTHS[new Date(now - days * DAY).getMonth()] ?? "";

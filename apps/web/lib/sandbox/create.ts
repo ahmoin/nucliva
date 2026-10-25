@@ -48,8 +48,6 @@ const bullets = (items: string[]) => ({
   version: 1,
 });
 
-// The saved shape of a document, which is what the editor opens: a title, then
-// the lines of text, with "## " for a heading and "- " for a bullet.
 export function docContent(title: string, body: string[]) {
   const nodes: object[] = [block("heading", title, { tag: "h1" })];
   let list: string[] = [];
@@ -99,7 +97,6 @@ export function docContent(title: string, body: string[]) {
   };
 }
 
-// The notes a guest writes from, in the document they land in.
 const notesContent = (title: string, notes: string[]) =>
   docContent(title, [
     "Rough notes to write from:",
@@ -144,8 +141,6 @@ const accentLayer = () => ({
   type: "shape" as const,
 });
 
-// A deck in the shape the slide editor saves: an accent bar, a title and a
-// line for each point.
 export function deckContent(deck: Pick<SandboxDeck, "slides">) {
   return {
     slides: deck.slides.map((slide) => ({
@@ -171,7 +166,6 @@ export function deckContent(deck: Pick<SandboxDeck, "slides">) {
   };
 }
 
-// A sheet in the shape the spreadsheet saves, with the first row as a header.
 export function sheetContent(sheet: Pick<SandboxSheet, "rows">) {
   const celldata = sheet.rows.flatMap((row, r) =>
     row.map((value, c) => ({
@@ -202,9 +196,6 @@ export function sheetContent(sheet: Pick<SandboxSheet, "rows">) {
 
 const ago = (days: number) => new Date(Date.now() - days * DAY);
 
-// Puts a workspace in the account: earlier documents, a deck and a sheet, which
-// make it look like someone has been working here, and writing samples for a
-// voice to match. Each only goes in once for a line of work.
 async function seedWorkspace(
   userId: string,
   category: string,
@@ -238,8 +229,6 @@ async function seedWorkspace(
     userId,
   }));
 
-  // The ordinary files around them, up to the size of a real account. The
-  // oldest few are in the trash.
   const filled = fillWorkspace(category, workspace.docs.length + 3);
   const rest = [
     ...filled.docs.map((doc) => ({
@@ -320,10 +309,6 @@ export interface Embed {
   text: string;
 }
 
-// Opens a solution in someone's account. The document of notes for the
-// solution always goes in. A guest also gets the workspace around it, so it is
-// a place with a history and not a blank page. Returns the id of the document,
-// and what is left to index.
 export async function createSandbox({
   guest,
   solution,
@@ -350,9 +335,6 @@ export async function createSandbox({
   return { documentId: created?.id, embeds };
 }
 
-// Makes the writing and the documents searchable, which is how Nucliva finds a
-// voice and draws on what is already there. It runs after the guest has been
-// sent on, and a failure only costs that.
 export async function embedAll(userId: string, embeds: Embed[]) {
   for (const embed of embeds) {
     try {

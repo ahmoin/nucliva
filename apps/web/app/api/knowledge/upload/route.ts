@@ -10,7 +10,6 @@ const MAX_FILES = 10;
 const MAX_BYTES = 10 * 1024 * 1024;
 const TEXT_TYPES = /\.(txt|md|markdown|csv)$/i;
 
-// What a file says, as text. PDFs are read page by page.
 async function textOf(file: File) {
   if (file.type === "application/pdf" || /\.pdf$/i.test(file.name)) {
     const { text } = await extractText(new Uint8Array(await file.arrayBuffer()), {
@@ -25,7 +24,6 @@ async function textOf(file: File) {
     : null;
 }
 
-// Files from the user's computer, put in the knowledge base.
 export async function POST(request: Request) {
   const session = await auth.api.getSession({ headers: await headers() });
 

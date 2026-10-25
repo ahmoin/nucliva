@@ -64,7 +64,6 @@ const fileLabels = { doc: "Doc", sheet: "Sheet", slides: "Deck" };
 const isOpen = (run: AgentRunView) =>
   run.status === "queued" || run.status === "running";
 
-// Nebius takes a moment to find a machine before the agent starts.
 const jobWaits: Record<string, string> = {
   IMAGE_PULLING: "Loading the agent onto it",
   PROVISIONING: "Finding a Nebius machine",
@@ -172,7 +171,6 @@ export function RunCard({ run }: { run: AgentRunView }) {
   );
 }
 
-// Asks for a suite of files, and follows each run as it goes.
 export function AgentConsole({ initialRuns }: { initialRuns: AgentRunView[] }) {
   const [runs, setRuns] = useState(initialRuns);
   const [prompt, setPrompt] = useState("");
@@ -183,7 +181,6 @@ export function AgentConsole({ initialRuns }: { initialRuns: AgentRunView[] }) {
     .map((run) => run.id)
     .join(",");
 
-  // Runs still going are asked about until they are over.
   useEffect(() => {
     if (!openIds) {
       return;

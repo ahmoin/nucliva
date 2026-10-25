@@ -121,14 +121,9 @@ import { localDb } from "@/lib/db/local";
 
 const zoomLevels = [50, 75, 90, 100, 125, 150, 200];
 
-// The toolbar's menu buttons show a value, so they read as plain text and not
-// as the app's uppercase button labels.
 const menuButtonClass =
   "justify-between px-2 font-normal text-sm normal-case tracking-normal";
 
-// A toolbar toggle is as wide as the icon buttons beside it. While on it is lit
-// in the brand color: the hover shade alone would look the same on and off
-// with the pointer still over it.
 const toggleClass = "px-0 aria-pressed:bg-primary/15 aria-pressed:text-primary";
 
 type Alignment = "center" | "justify" | "left" | "right";
@@ -147,11 +142,8 @@ const alignments: { label: string; value: Alignment }[] = [
   { label: "Justify", value: "justify" },
 ];
 
-// Blocks that are not a text style but still get named on the style button.
-// Anything else counts as normal text.
 const otherBlocks: Record<string, string> = { code: "Code" };
 
-// A style row is drawn in its own look, but never so big it takes over the menu.
 const PREVIEW_SIZE_MAX = "36px";
 
 const withoutFormat = (css: string) =>
@@ -163,9 +155,6 @@ const withoutFormat = (css: string) =>
     )
   );
 
-// Formatting put directly on text hides its style's own. Text that is given a
-// style drops it, so the style shows. This reads the selection afresh, because
-// swapping a block for another replaces the one the caller was holding.
 function $clearFormatting() {
   const selection = $getSelection();
 
@@ -184,7 +173,6 @@ function $clearFormatting() {
   selection.setStyle(withoutFormat(selection.style));
 }
 
-// A bullet, as opposed to an item of a numbered list.
 const $isBullet = (block: ElementNode) => {
   const list = block.getParent();
 
@@ -201,9 +189,6 @@ interface Font {
   weights?: number[];
 }
 
-// The brand fonts are the ones app/layout.tsx loads, listed with the weights
-// those files ship with. Instrument Sans comes first: it is what a document
-// uses by default.
 const brandFonts: Font[] = [
   {
     family: "Instrument Sans, sans-serif",
@@ -222,7 +207,6 @@ const brandFonts: Font[] = [
   },
 ];
 
-// System fonts only come in regular and bold, which the Bold button covers.
 const systemFonts: Font[] = [
   { family: "Arial, sans-serif", name: "Arial" },
   { family: "Courier New, monospace", name: "Courier New" },
@@ -247,19 +231,14 @@ const weightNames: Record<number, string> = {
   900: "Black",
 };
 
-// Menu rows are styled as uppercase labels by default. Rows that show a value,
-// like a font name or a zoom level, read as written instead.
 const plainItemClass = "font-normal text-sm normal-case tracking-normal";
 
-// The first family in a CSS font list, without its quotes, is the font's name.
 const fontName = (family: string) =>
   (family.split(",")[0] ?? "").replaceAll(/["']/g, "").trim();
 
 const FONT_SIZE_MIN = 1;
 const FONT_SIZE_MAX = 400;
 
-// Ten columns: grays, then pure colors, then three tints and three shades of
-// each of those colors.
 const textColors = [
   "#000000 #434343 #666666 #999999 #b7b7b7 #cccccc #d9d9d9 #efefef #f3f3f3 #ffffff",
   "#980000 #ff0000 #ff9900 #ffff00 #00ff00 #00ffff #4a86e8 #0000ff #9900ff #ff00ff",
@@ -271,11 +250,8 @@ const textColors = [
   "#5b0f00 #660000 #783f04 #7f6000 #274e13 #0c343d #1c4587 #073763 #20124d #4c1130",
 ].flatMap((row) => row.split(" "));
 
-// One row of the color menu, leaving a cell for the button that adds one.
 const CUSTOM_COLORS_SHOWN = 9;
 
-// The colors in the document that are not in the palette, most used first. A
-// color counts for as much text as wears it.
 function $customColors() {
   const usage = new Map<string, number>();
 
@@ -293,15 +269,10 @@ function $customColors() {
     .map(([value]) => value);
 }
 
-// Paragraphs and headings have no classes here. How text looks comes from its
-// text style, which each block is given as it is drawn.
 const theme = {
   code: "my-3 block bg-muted p-3 font-mono text-[15px]",
   link: "text-primary underline underline-offset-2",
   list: {
-    // The bullet takes the look of the first character, from variables the
-    // item is given as it is drawn. Without them it follows the item.
-    // An item that only holds a nested list has no bullet of its own.
     nested: { listitem: "list-none" },
     listitem:
       "my-1 marker:font-(--marker-font-weight) marker:font-(family-name:--marker-font-family) marker:text-(--marker-color) marker:text-(length:--marker-font-size)",
@@ -369,17 +340,12 @@ function Toolbar() {
   const [align, setAlign] = useState<Alignment>("left");
   const [styleMenuOpen, setStyleMenuOpen] = useState(false);
   const [fontMenuOpen, setFontMenuOpen] = useState(false);
-  // Ahead of the reading below, which needs the page to show the current styles.
   const custom = useTextStyles();
   const [colorMenuOpen, setColorMenuOpen] = useState(false);
   const [customColors, setCustomColors] = useState<string[]>([]);
-  // What is being typed into the size box, until Enter applies it.
   const [sizeDraft, setSizeDraft] = useState<string | null>(null);
 
   useEffect(() => {
-    // Text without a font, size or weight of its own shows the one it
-    // inherits, so headings and code read correctly. With no caret yet, that
-    // is the document's own.
     const read = () => {
       const selection = $getSelection();
       const range = $isRangeSelection(selection) ? selection : null;
@@ -401,11 +367,8 @@ function Toolbar() {
           : fallback;
 
       setTextStyle($isCodeNode(block) ? "code" : $styleOf(block));
-      // A button is lit when everything selected is what it makes.
       setBulleted(blocks.length > 0 && blocks.every($isBullet));
       setQuoted(blocks.length > 0 && blocks.every($isQuoteNode));
-      // Text with no alignment, or one that follows the writing direction, sits
-      // on the left.
       const format = block?.getFormatType();
 
       setAlign(
@@ -428,13 +391,10 @@ function Toolbar() {
     );
   }, [editor]);
 
-  // A font row carries its family, and a weight row its weight as well. A row
-  // without a weight puts the text back on the font's regular weight.
   const pickFont = useCallback(
     (event: React.MouseEvent<HTMLElement>) => {
       const { family, weight: picked } = event.currentTarget.dataset;
 
-      // A row that opens a weight menu would otherwise leave the menu open.
       setFontMenuOpen(false);
       editor.update(() => {
         const selection = $getSelection();
@@ -448,7 +408,6 @@ function Toolbar() {
           "font-weight": picked ?? null,
         });
 
-        // A chosen weight replaces bold, so the text shows exactly that weight.
         if (
           picked &&
           (!selection.isCollapsed() || selection.hasFormat("bold"))
@@ -481,7 +440,6 @@ function Toolbar() {
     },
     [applyColor]
   );
-  // The document's custom colors are read afresh each time the menu opens.
   const toggleColorMenu = useCallback(
     (open: boolean) => {
       setColorMenuOpen(open);
@@ -511,8 +469,6 @@ function Toolbar() {
     },
     [applyColor]
   );
-  // Each piece of selected text gets its own next size, so growing a heading
-  // and a paragraph together keeps them apart.
   const changeFontSize = useCallback(
     (next: (size: number) => number) => {
       const root = editor.getRootElement();
@@ -530,7 +486,6 @@ function Toolbar() {
 
         $patchStyleText(selection, {
           "font-size": (current, target) => {
-            // Text with no size of its own is as big as its block.
             const node = $isRangeSelection(target)
               ? target.anchor.getNode()
               : target;
@@ -570,9 +525,6 @@ function Toolbar() {
     []
   );
   const discardSize = useCallback(() => setSizeDraft(null), []);
-  // Enter applies what was typed, to the nearest half. Escape, or clicking
-  // away, leaves the size as it was. Either way the caret goes back to the
-  // document.
   const handleSizeKey = useCallback(
     (event: React.KeyboardEvent<HTMLInputElement>) => {
       if (event.key !== "Enter" && event.key !== "Escape") {
@@ -593,8 +545,6 @@ function Toolbar() {
     },
     [changeFontSize, editor, sizeDraft]
   );
-  // Picking from a menu hands focus back to the document instead of leaving
-  // it on the menu button.
   const focusEditor = useCallback(() => editor.getRootElement(), [editor]);
 
   const undo = useCallback(
@@ -623,9 +573,6 @@ function Toolbar() {
     },
     [editor]
   );
-  // Bullets and quotes are kinds of block, and the text style is kept apart
-  // from the kind. A heading made a bullet stays a heading, and is one again
-  // once it stops being a bullet.
   const toggleList = useCallback(
     (pressed: boolean) => {
       editor.update(() => {
@@ -636,7 +583,6 @@ function Toolbar() {
         }
 
         if (pressed) {
-          // A numbered list becomes a bulleted one.
           for (const block of $selectedBlocks(selection)) {
             const list = block.getParent();
 
@@ -662,8 +608,6 @@ function Toolbar() {
           return;
         }
 
-        // A new item joins the list before it, or starts one. Lexical joins
-        // that to a list that follows.
         for (const item of items) {
           const previous = item.getPreviousSibling();
 
@@ -699,8 +643,6 @@ function Toolbar() {
     [editor]
   );
 
-  // A style row gives the selected blocks that style. An "update" row first
-  // makes the style look like the text at the caret, for the whole document.
   const pickStyle = useCallback(
     (event: React.MouseEvent<HTMLElement>) => {
       const { tag, update } = event.currentTarget.dataset;
@@ -728,8 +670,6 @@ function Toolbar() {
           });
         }
 
-        // A bullet or a quote takes the style and stays what it is. Any other
-        // block becomes the style's own.
         $swapBlocks((block) => {
           if ($isListItemNode(block) || $isQuoteNode(block)) {
             $setStyle(block, style.tag);
@@ -981,7 +921,6 @@ function Toolbar() {
             <DropdownMenuLabel className="px-0">Custom</DropdownMenuLabel>
             <div className="grid grid-cols-10 gap-1">
               {customColors.map(swatch)}
-              {/* The picker itself is invisible and covers the plus, so a click lands on it directly. */}
               <span className="relative flex size-5 items-center justify-center ring-1 ring-foreground/20 hover:ring-2 hover:ring-foreground">
                 <PlusIcon className="size-3" />
                 <input
@@ -1078,7 +1017,6 @@ function DocumentSurface({
   const [zoom, setZoom] = useState<number | null>(null);
   const [fit, setFit] = useState(1);
   const [showRuler, setShowRuler] = useState(true);
-  // Which of the AI's changes the navigator is on: the one with the buttons.
   const [change, setChange] = useState(0);
   const canvasRef = useRef<HTMLDivElement>(null);
   const scale = zoom === null ? fit : zoom / 100;
@@ -1144,7 +1082,6 @@ function DocumentSurface({
     [schedule]
   );
 
-  // What the document knows about its facts is saved with its text.
   const facts = useFactStore((content as { facts?: unknown }).facts);
 
   const handleChange = useCallback(
@@ -1325,7 +1262,6 @@ export function DocumentEditor({
 }: {
   content: object;
   id: string;
-  // A draft an agent made, put in as suggestions when the doc opens.
   suggested?: PendingDoc | null;
   title: string;
   updatedAt: number;

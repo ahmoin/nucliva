@@ -13,8 +13,6 @@ import {
   solutionsIn,
 } from "@/lib/content/solutions";
 
-// The lines of work Nucliva is for, as a list that opens one at a time: what
-// the work is, what Nucliva does in it, and a few things it writes there.
 export function SolutionsShowcase() {
   const [active, setActive] = useState(0);
   const category = categories[active] ?? categories[0];

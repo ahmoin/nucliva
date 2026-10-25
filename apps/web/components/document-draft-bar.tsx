@@ -62,14 +62,9 @@ const draftStarters = [
   { label: "Summary", prompt: "Summarize this: " },
 ];
 
-// How much of the conversation the AI is shown with a new message.
 const HISTORY_TURNS = 12;
-// The part of a page that is kept with a source, so a saved conversation stays
-// small.
 const SOURCE_EXCERPT = 240;
 
-// Keeps something on the page for a moment after it should go, so it can leave
-// with an animation instead of vanishing.
 function usePresence(show: boolean, exit: number) {
   const [mounted, setMounted] = useState(show);
 
@@ -88,29 +83,17 @@ function usePresence(show: boolean, exit: number) {
   return { mounted: mounted || show, state: show ? "open" : "closed" };
 }
 
-// The panel comes up from the prompt and goes back down to it, and moves a
-// few pixels, not the whole way, so that it reads as the same panel. Anything
-// that arrives in it rises into place. A user who asks for less motion gets
-// the fades alone.
 const PANEL_MOTION =
   "ease-[cubic-bezier(0.23,1,0.32,1)] motion-safe:data-[state=closed]:fade-out-0 motion-safe:data-[state=closed]:slide-out-to-bottom-1 motion-safe:data-[state=closed]:animate-out motion-safe:data-[state=closed]:duration-150 motion-safe:data-[state=open]:fade-in-0 motion-safe:data-[state=open]:slide-in-from-bottom-2 motion-safe:data-[state=open]:animate-in motion-safe:data-[state=open]:duration-200";
-// The chat inside the panel, which can come and go while the panel stays for
-// the changes.
 const CHAT_MOTION =
   "ease-[cubic-bezier(0.23,1,0.32,1)] motion-safe:data-[state=closed]:fade-out-0 motion-safe:data-[state=closed]:animate-out motion-safe:data-[state=closed]:duration-150 motion-safe:data-[state=open]:fade-in-0 motion-safe:data-[state=open]:animate-in motion-safe:data-[state=open]:duration-200";
-// How long a message counts as having just arrived, a little more than the
-// time it takes to rise.
 const FRESH_FOR = 400;
 
-// The conversation with the AI about the document. What it suggests for the
-// document goes into the document, to be accepted or rejected there, and this
-// is where it is talked about.
 export function DraftBar({
   change: current,
   documentId,
   onChange: setCurrent,
 }: {
-  // Which of the AI's changes has its buttons showing, counting from 0.
   change: number;
   documentId: string;
   onChange: (change: number) => void;
@@ -119,19 +102,15 @@ export function DraftBar({
   const changes = useChanges();
   const [chat, setChat] = useChat(documentId);
   const [open, setOpen] = useState(false);
-  // A solution page can send someone here with its request already typed in.
   const starter = useSearchParams()?.get("prompt") ?? "";
   const [prompt, setPrompt] = useState(starter);
   const [generating, setGenerating] = useState(false);
-  // While the AI works from the web: whether the search is still running, and
-  // what it found.
   const [researching, setResearching] = useState(false);
   const [found, setFound] = useState<Source[] | null>(null);
   const [asking, setAsking] = useState("");
   const [error, setError] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  // With a request waiting, the cursor is ready at the end of it.
   useEffect(() => {
     if (starter) {
       inputRef.current?.focus();
@@ -139,20 +118,13 @@ export function DraftBar({
   }, [starter]);
 
   const line = useMemo(() => lineOf(chat), [chat]);
-  // The next message goes on from the head. When the head has messages after
-  // it, that is a branch from an earlier message.
   const branching = chat.head !== null && endOf(chat, chat.head) !== chat.head;
   const chatShown = open && (line.length > 0 || generating);
-  // The chat and the bar of changes under it each leave with a fade, and the
-  // box around them leaves when both have.
   const chatPresence = usePresence(chatShown, 160);
   const panel = usePresence(chatPresence.mounted || changes.length > 0, 160);
   const known = useRef(new Set<string>());
   const [fresh, setFresh] = useState<Set<string>>(new Set());
 
-  // A message that has just arrived rises into place. Messages that were
-  // already kept when the page opened do not, and neither does one that is
-  // brought back later by opening the chat: it is only fresh for a moment.
   useLayoutEffect(() => {
     const arrived = chat.messages
       .map(({ id }) => id)
@@ -196,7 +168,6 @@ export function DraftBar({
     []
   );
 
-  // Says something to the AI, as a reply to a message of the conversation.
   const ask = useCallback(
     async (text: string, parent: string | null) => {
       const research = wantsResearch(text);
@@ -225,8 +196,6 @@ export function DraftBar({
       setCurrent(0);
 
       try {
-        // The search is its own request, so what it found can be shown while
-        // the answer is still being written from it.
         if (research) {
           const search = await fetch("/api/research", {
             body: JSON.stringify({ query: text }),
@@ -261,7 +230,6 @@ export function DraftBar({
           await response.json();
         let count = 0;
 
-        // The edits go into the document as changes to accept or reject.
         editor.update(
           () => {
             count = $applyEdits(data.edits, data.sources, wantsCitations(text));
@@ -314,8 +282,6 @@ export function DraftBar({
     [ask, chat.head, generating, prompt]
   );
 
-  // Asking again with other words: the changes the old question made are put
-  // back first, and the new question is another line beside the old one.
   const edit = useCallback(
     (id: string, text: string) => {
       const message = chat.messages.find((item) => item.id === id);
@@ -477,7 +443,6 @@ export function DraftBar({
                             {found ? (
                               found.map((source, index) => (
                                 <TaskItem key={source.url}>
-                                  {/* The sites that were found come in one after the other. */}
                                   <TaskItemFile
                                     className={`fill-mode-backwards ${ARRIVE}`}
                                     style={{
@@ -533,7 +498,6 @@ export function DraftBar({
             <div
               className={`flex items-center gap-3 border-t px-3 py-2 first:border-t-0 ${ARRIVE}`}
             >
-              {/* Steps through the changes, taking the document to each. */}
               <div className="flex items-center gap-1 text-muted-foreground text-xs tabular-nums">
                 <Button
                   aria-label="Previous change"
@@ -592,7 +556,6 @@ export function DraftBar({
         className="relative flex items-center gap-2 overflow-hidden border bg-card p-2 shadow-lg"
         onSubmit={submit}
       >
-        {/* While the AI works, a bar of light runs along the top of the prompt. */}
         {generating ? (
           <span
             aria-hidden

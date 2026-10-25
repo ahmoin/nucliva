@@ -44,7 +44,6 @@ import {
 } from "lexical";
 import { useLayoutEffect, useState } from "react";
 
-// What a text style decides about the text that wears it.
 export const FORMAT_PROPERTIES = [
   "color",
   "font-family",
@@ -54,36 +53,26 @@ export const FORMAT_PROPERTIES = [
 
 export type Format = Record<string, string>;
 
-// The styles a document has changed, by tag. They live on the document's root
-// so they save, load and undo with everything else in it.
 export const stylesState = createState("styles", {
   parse: (value) =>
     value && typeof value === "object" ? (value as Record<string, Format>) : {},
 });
 
-// The text style of a block whose kind does not say it. It is kept apart from
-// the kind, so a bullet or a quote can be a heading too.
 const styleState = createState("style", {
   parse: (value) => (typeof value === "string" ? value : undefined),
 });
 
-// Normal text is a block with no style of its own.
 export const $setStyle = <Block extends ElementNode>(
   block: Block,
   tag: string
 ) => $setState(block, styleState, tag === "paragraph" ? undefined : tag);
 
-// How far the first line of a paragraph is moved in, in pixels. Tab at the start
-// of a paragraph moves it half an inch, which is also how wide a tab is.
 export const FIRST_LINE_STEP = 48;
 
 export const firstLineState = createState("firstLine", {
   parse: (value) => (typeof value === "number" && value > 0 ? value : 0),
 });
 
-// Where a tab in a paragraph stops, measured from the left margin in pixels.
-// Text after a tab starts at a left stop, is centered on a center stop and ends
-// at a right stop.
 export const TAB_STOP_TYPES = ["left", "center", "right"] as const;
 
 export interface TabStop {
@@ -101,7 +90,6 @@ export const tabStopsState = createState("tabStops", {
       : [],
 });
 
-// The space between the sides of the page and the text, in pixels.
 export const DEFAULT_MARGIN = 96;
 
 export interface Margins {
@@ -121,13 +109,9 @@ export const marginsState = createState("margins", {
 });
 
 interface TextStyle {
-  // The block its text is in when that is neither a bullet nor a quote.
   create: () => ElementNode;
-  // The look a document can change.
   format: Format;
-  // The spacing of its lines, which goes with that look and stays as it is.
   layout: Format;
-  // The space around it. A bullet or a quote has its own instead.
   margin: string;
   name: string;
   tag: string;
@@ -229,13 +213,9 @@ export const textStyles: TextStyle[] = [
   },
 ];
 
-// A tag the menu does not offer, such as a sixth level of heading, counts as
-// normal text.
 export const styleFor = (tag: string) =>
   textStyles.find((style) => style.tag === tag) ?? normal;
 
-// A block that holds text and wears a text style. A list item that only holds
-// a list nested in it is not one.
 const $isTextBlock = (
   node: LexicalNode | null | undefined
 ): node is ElementNode =>
@@ -244,8 +224,6 @@ const $isTextBlock = (
   $isQuoteNode(node) ||
   ($isListItemNode(node) && !$isListNode(node.getFirstChild()));
 
-// The block a node is in: one of those, or a block of code, which can be
-// turned into one.
 export const $blockOf = (node: LexicalNode) =>
   $findMatchingParent(
     node,
@@ -253,13 +231,10 @@ export const $blockOf = (node: LexicalNode) =>
       $isTextBlock(parent) || $isCodeNode(parent)
   );
 
-// A heading goes by its level. Any other block is normal text unless it says
-// otherwise.
 export const $styleOf = (block: ElementNode | null) =>
   (block && $getState(block, styleState)) ??
   ($isHeadingNode(block) ? block.getTag() : "paragraph");
 
-// Whether the caret is at the very start of a block.
 const $atBlockStart = (selection: RangeSelection, block: ElementNode) => {
   const { anchor } = selection;
 
@@ -271,7 +246,6 @@ const $atBlockStart = (selection: RangeSelection, block: ElementNode) => {
   );
 };
 
-// The blocks a selection touches, in the order they come in the document.
 export const $selectedBlocks = (selection: RangeSelection) =>
   new Set(
     selection
@@ -280,8 +254,6 @@ export const $selectedBlocks = (selection: RangeSelection) =>
       .filter((block) => block !== null)
   );
 
-// Puts another block in place of each selected one that `swap` makes one for.
-// The text moves into it and the selection stays where it was.
 export function $swapBlocks(swap: (block: ElementNode) => ElementNode | null) {
   const selection = $getSelection();
   const swapped: ElementNode[] = [];
@@ -320,9 +292,6 @@ export function $swapBlocks(swap: (block: ElementNode) => ElementNode | null) {
   return swapped;
 }
 
-// Keeps the page showing the document's text styles, and returns the ones the
-// document has changed. The styles reach the page as variables on the editor,
-// such as --h1-font-size, which the blocks of each style read.
 export function useTextStyles() {
   const [editor] = useLexicalComposerContext();
   const [custom, setCustom] = useState<Record<string, Format>>({});
@@ -363,7 +332,6 @@ export function useTextStyles() {
   return custom;
 }
 
-// The page margins of the document, kept current as they are dragged.
 export function useMargins() {
   const [editor] = useLexicalComposerContext();
   const [margins, setMargins] = useState<Margins>({
@@ -371,7 +339,6 @@ export function useMargins() {
     right: DEFAULT_MARGIN,
   });
 
-  // Before paint, so a page is never drawn with the margins of the one before.
   useLayoutEffect(() => {
     const read = () => {
       const next = $getState($getRoot(), marginsState);
@@ -405,9 +372,6 @@ function clearTabs(element: HTMLElement) {
   }
 }
 
-// Gives each tab in a paragraph the width that takes the text after it to the
-// next stop: the left edge of the text to a left stop, its right edge to a
-// right one. A tab past the last stop keeps the width of a plain tab.
 function fitTabs(element: HTMLElement, stops: TabStop[]) {
   const tabs = tabsIn(element);
 
@@ -442,7 +406,6 @@ function fitTabs(element: HTMLElement, stops: TabStop[]) {
         after.setStartAfter(tab);
       }
 
-      // The text ends at a right stop and is centered on a center one.
       const text = after.getBoundingClientRect().width / scale;
 
       width = Math.max(0, width - (stop.type === "center" ? text / 2 : text));
@@ -453,7 +416,6 @@ function fitTabs(element: HTMLElement, stops: TabStop[]) {
   });
 }
 
-// Keeps the tabs of paragraphs that have tab stops lined up with them.
 export function useTabStops() {
   const [editor] = useLexicalComposerContext();
 
@@ -477,7 +439,6 @@ export function useTabStops() {
       });
       const next = new Set(found.map(([element]) => element));
 
-      // A paragraph that lost its stops goes back to plain tabs.
       for (const element of fitted) {
         if (!next.has(element)) {
           clearTabs(element);
@@ -497,15 +458,10 @@ export function useTabStops() {
   }, [editor]);
 }
 
-// Makes the blocks on the page follow their text styles.
 export function useStyledBlocks() {
   const [editor] = useLexicalComposerContext();
 
-  // Before paint, so the page is never counted or drawn without it.
   useLayoutEffect(() => {
-    // Gives a block the look of its style, by pointing it at that style's
-    // variables. Lexical reports each block it draws or redraws, including
-    // one it brings back with undo.
     const dress = (keys: Iterable<string>) =>
       editor.getEditorState().read(() => {
         for (const key of keys) {
@@ -517,25 +473,19 @@ export function useStyledBlocks() {
           }
 
           const style = styleFor($styleOf(node));
-          // An empty block has no text to carry formatting picked for it, so
-          // the block wears that itself. Its line and caret are then the right
-          // size before anything is typed.
           const typed = getStyleObjectFromCSS(
             node.isEmpty() ? node.getTextStyle() : ""
           );
-          // A paragraph in a table cell has no space around it of its own.
           const alone =
             ($isParagraphNode(node) || $isHeadingNode(node)) &&
             !$isTableCellNode(node.getParent());
 
           const cell = node.getParent();
-          // The cells of a header row are bold.
           const heading =
             $isTableCellNode(cell) &&
             cell.getHeaderStyles() !== TableCellHeaderStates.NO_STATUS;
 
           for (const property of FORMAT_PROPERTIES) {
-            // A quote is muted whatever its text style.
             const own =
               property === "color" && $isQuoteNode(node)
                 ? ""
@@ -559,7 +509,6 @@ export function useStyledBlocks() {
           element.style.setProperty("text-indent", indent ? `${indent}px` : "");
 
           if ($isListItemNode(node)) {
-            // A bullet looks like the first character of its item.
             const first = node.getFirstDescendant();
             const own = $isTextNode(first)
               ? getStyleObjectFromCSS(first.getStyle())
@@ -579,7 +528,6 @@ export function useStyledBlocks() {
         }
       });
 
-    // Text moves its bullet along without redrawing its list item.
     const dressBullets: MutationListener = (mutations) =>
       dress(
         editor.getEditorState().read(() =>
@@ -590,7 +538,6 @@ export function useStyledBlocks() {
         )
       );
     const dressBlocks: MutationListener = (mutations) => dress(mutations.keys());
-    // A cell that becomes a header changes how the paragraphs in it look.
     const dressCells: MutationListener = (mutations) =>
       dress(
         editor.getEditorState().read(() =>
@@ -604,10 +551,6 @@ export function useStyledBlocks() {
         )
       );
 
-    // Lexical carries a text style over a new line only when the kind of block
-    // says it, as a heading does. A title is a paragraph that was told, so the
-    // same is done for it here: text after the caret stays a title, and a line
-    // left empty is normal text.
     const split = () => {
       const selection = $getSelection();
       const block =
@@ -627,8 +570,6 @@ export function useStyledBlocks() {
 
       const next = selection.insertParagraph();
 
-      // The next paragraph starts as indented as this one, with the same tab
-      // stops.
       if (next) {
         $setState(next, firstLineState, indent);
         $setState(next, tabStopsState, stops);
@@ -645,17 +586,12 @@ export function useStyledBlocks() {
       return true;
     };
 
-    // Tab nests a bullet wherever the caret is in it, as it does in other
-    // editors. At the start of any other block it moves the first line in by
-    // half an inch, and Shift+Tab moves it back. Anywhere else it is a tab
-    // character, which Lexical's own handling of Tab takes care of.
     const tab = (event: KeyboardEvent) => {
       const selection = $getSelection();
       const block = $isRangeSelection(selection)
         ? $blockOf(selection.anchor.getNode())
         : null;
 
-      // In a table Tab moves from cell to cell, which the table takes care of.
       if (
         !($isRangeSelection(selection) && block) ||
         $isTableCellNode(block.getParent())
@@ -676,8 +612,6 @@ export function useStyledBlocks() {
         return false;
       }
 
-      // With tab stops, Tab is a tab character wherever the caret is, and the
-      // stops decide how far it goes.
       if ($getState(block, tabStopsState).length > 0 && !event.shiftKey) {
         event.preventDefault();
 
@@ -696,8 +630,6 @@ export function useStyledBlocks() {
       return true;
     };
 
-    // Backspace at the start of an indented paragraph takes the indent back
-    // before it joins the paragraph above.
     const backspace = (event: KeyboardEvent) => {
       const selection = $getSelection();
       const block = $isRangeSelection(selection)

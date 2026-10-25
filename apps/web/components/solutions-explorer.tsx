@@ -19,8 +19,6 @@ const matches = (solution: Solution, query: string) =>
     .toLowerCase()
     .includes(query.trim().toLowerCase());
 
-// A catalog of what Nucliva writes, which can be searched and narrowed to one
-// line of work.
 export function SolutionsExplorer() {
   const [query, setQuery] = useState("");
   const [category, setCategory] = useState<string | null>(null);
@@ -34,7 +32,6 @@ export function SolutionsExplorer() {
       ),
     [category, query]
   );
-  // The results by the line of work they belong to, leaving out the empty ones.
   const groups = useMemo(
     () =>
       categories
@@ -55,7 +52,6 @@ export function SolutionsExplorer() {
     (event: React.MouseEvent<HTMLButtonElement>) => {
       const { category: picked } = event.currentTarget.dataset;
 
-      // Picking the one that is already picked lets go of it.
       setCategory((current) => (current === picked ? null : (picked ?? null)));
     },
     []

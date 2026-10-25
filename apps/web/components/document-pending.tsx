@@ -5,13 +5,9 @@ import { useEffect } from "react";
 import { $applyEdits } from "@/components/document-suggestions";
 import type { PendingDoc } from "@/lib/agents/suite";
 
-// Documents whose waiting draft has been put in, so it never goes in twice,
-// even when the editor mounts twice.
+// Module-level so the draft is not applied twice when the editor mounts twice.
 const applied = new Set<string>();
 
-// A doc an agent made opens with its draft as suggestions, the same ones the
-// chat makes, to accept or reject one by one. They are saved with the text, in
-// the same request that says the draft has been put in.
 export function PendingDocPlugin({
   id,
   pending,

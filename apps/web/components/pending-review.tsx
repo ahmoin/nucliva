@@ -3,8 +3,6 @@
 import { SparkleIcon } from "@phosphor-icons/react";
 import { Button } from "@workspace/ui/components/button";
 
-// What an agent made for a sheet or a deck is shown in place, and is only
-// saved once it is kept.
 export function PendingReview({
   busy,
   onDiscard,

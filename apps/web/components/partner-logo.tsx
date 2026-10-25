@@ -9,7 +9,6 @@ export interface Partner {
   width: number;
 }
 
-// A company's logo in the right colors for the theme.
 export function PartnerLogo({
   className,
   partner,

@@ -6,7 +6,6 @@ import { Textarea } from "@workspace/ui/components/textarea";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
-// Adds a writing sample, then shows the list again with it in.
 export function StyleSampleForm() {
   const router = useRouter();
   const [content, setContent] = useState("");

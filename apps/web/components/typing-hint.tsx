@@ -22,8 +22,6 @@ const ERASE_MS = 24;
 const HOLD_MS = 1600;
 const GAP_MS = 350;
 
-// What to type next: one more letter, then a pause on the full request, then
-// letters taken away, then the next request.
 const next = (state: Typing): Typing => {
   const full = (requests[state.index] ?? "").length;
 
@@ -48,9 +46,6 @@ const delayFor = (state: Typing) => {
   return state.length >= full ? HOLD_MS : WRITE_MS;
 };
 
-// A hint that types out requests one after another, in the place where the
-// words someone types will go. It stays still for people who ask for less
-// motion.
 export function TypingHint({ className }: { className?: string }) {
   const [state, setState] = useState<Typing>({
     deleting: false,

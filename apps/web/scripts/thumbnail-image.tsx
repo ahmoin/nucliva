@@ -1,8 +1,6 @@
 import { readFileSync } from "node:fs";
 import { ImageResponse } from "next/og";
 
-// The 3:2 thumbnail for the Devpost listing, in the same style as the share
-// image. It is baked into public/brand/thumbnail.png by render-opengraph.mts.
 export const size = { height: 1000, width: 1500 };
 
 const file = (name: string) => readFileSync(new URL(name, import.meta.url));

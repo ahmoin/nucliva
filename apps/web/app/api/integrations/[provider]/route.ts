@@ -12,7 +12,6 @@ export const maxDuration = 300;
 const sessionFor = async () =>
   auth.api.getSession({ headers: await headers() });
 
-// Syncs again, in the background.
 export async function POST(
   _request: Request,
   { params }: { params: Promise<{ provider: string }> }
@@ -35,7 +34,6 @@ export async function POST(
   return new Response(null, { status: 202 });
 }
 
-// Disconnects the app, and takes out what it brought in.
 export async function DELETE(
   _request: Request,
   { params }: { params: Promise<{ provider: string }> }

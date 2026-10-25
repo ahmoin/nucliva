@@ -1,9 +1,6 @@
 import { RunCard } from "@/components/agent-console";
 import type { AgentRunView } from "@/lib/agents/steps";
 
-// A finished suite agent run, as the Agents page shows it: every step with
-// what it did, and the doc, sheet and deck it made together. The files lead
-// to sign up, since there is no account to open them in.
 const run: AgentRunView = {
   createdAt: "2026-10-01T00:00:00.000Z",
   error: null,

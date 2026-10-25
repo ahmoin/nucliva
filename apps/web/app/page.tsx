@@ -26,8 +26,6 @@ import {
   solutions,
 } from "@/lib/content/solutions";
 
-// The solutions named on the first screen, and the three shown with the list of
-// who Nucliva is for.
 const heroSolutions = [
   "investor-updates",
   "pitch-decks",
@@ -76,7 +74,6 @@ const showcases = [
   {
     description:
       "Upload a few things you have written and Nucliva maps your tone, rhythm and word choice. Every draft after that sounds like you, not like a chatbot.",
-    // Each section shows the part of the app it is about.
     demo: "style",
     lane: "left",
     title: ["It learns", "how you write"],
@@ -126,7 +123,6 @@ export default async function Page() {
               className={`flex flex-col items-center gap-4 delay-200 ${enter}`}
             >
               <div className="flex flex-wrap items-start justify-center gap-3">
-                {/* The way in for anyone who wants to see it working first. */}
                 <TrySandboxButton
                   category="founders"
                   example="investor-updates"
@@ -148,7 +144,6 @@ export default async function Page() {
                 Try it with no sign up. Free to start, no credit card.
               </p>
             </div>
-            {/* What Nucliva is for, a click from the first screen. */}
             <div
               className={`flex max-w-3xl flex-col items-center gap-3 delay-300 ${enter}`}
             >

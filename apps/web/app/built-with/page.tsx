@@ -19,7 +19,7 @@ export const metadata: Metadata = {
 const enter =
   "motion-safe:fade-in motion-safe:slide-in-from-bottom-4 motion-safe:animate-in motion-safe:fill-mode-both motion-safe:duration-700 motion-safe:ease-out";
 
-// The logo for each partner in lib/content/built-with.ts, by name.
+// Keyed by partner name in lib/content/built-with.ts.
 const logos: Record<string, Partner> = {
   LangChain: {
     darkLogo: "/logos/langchain-dark.svg",
