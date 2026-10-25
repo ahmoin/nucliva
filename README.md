@@ -257,14 +257,6 @@ Every step can be skipped, and the **Tour** button brings it back. A new account
 
 If you sign up from the sandbox, your work moves to your account. Guests have a small hourly allowance of AI requests and cannot connect outside apps.
 
-## Not done yet
-
-- A ripple changes one document. Carrying it into the linked sheet and deck is next.
-- The slides and sheets editors are basic next to the docs editor.
-- The editor's layout on phones is rough.
-- There are no automated tests besides the ripple evaluation.
-- OAuth tokens for connected apps are stored unencrypted.
-
 ## License
 
 [MIT](LICENSE.md)
