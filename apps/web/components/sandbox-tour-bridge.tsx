@@ -4,13 +4,15 @@ import { useLexicalComposerContext } from "@lexical/react/LexicalComposerContext
 import {
   $createParagraphNode,
   $createTextNode,
+  $getNodeByKey,
   $getRoot,
   type NodeKey,
 } from "lexical";
 import { useEffect } from "react";
-import { RIPPLE_PREFIX } from "@/components/document-ripple";
+import { type FactStore, RIPPLE_PREFIX } from "@/components/document-ripple";
 import { $changes } from "@/components/document-suggestions";
 import { tour } from "@/components/sandbox-tour-store";
+import { hashText } from "@/lib/editor/facts";
 
 // Three places that state one fact, written three ways, to try the ripple on.
 const EXAMPLE = [
@@ -21,7 +23,7 @@ const EXAMPLE = [
 
 // Sits in the editor, and tells the tour what is going on in the document, and
 // lets it put the example in.
-export function TourBridge() {
+export function TourBridge({ facts }: { facts: FactStore }) {
   const [editor] = useLexicalComposerContext();
 
   useEffect(() => {
@@ -33,9 +35,19 @@ export function TourBridge() {
       tour.watched() &&
       editor.getEditorState().read(() => {
         const changes = $changes();
+        // The example is ready once every line of it has been read.
+        const read = keys.map((key) => {
+          const node = $getNodeByKey(key);
+
+          return node
+            ? Boolean(facts.data.mentions[hashText(node.getTextContent())]?.length)
+            : false;
+        });
 
         tour.set({
           changes: changes.length,
+          exampleReady: read.length > 0 && read.every(Boolean),
+          rippled: facts.data.log.length,
           ripple: changes.filter((change) =>
             change.id.startsWith(RIPPLE_PREFIX)
           ).length,
@@ -43,6 +55,16 @@ export function TourBridge() {
       });
 
     tour.addExample = () => {
+      // A second press while it is being read would put it in twice.
+      if (
+        keys.length > 0 &&
+        editor
+          .getEditorState()
+          .read(() => keys.every((key) => $getNodeByKey(key) !== null))
+      ) {
+        return;
+      }
+
       // The chat from the first request would sit over the example.
       document
         .querySelector<HTMLButtonElement>('[aria-label="Hide chat"]')
@@ -104,15 +126,20 @@ export function TourBridge() {
     publish();
 
     const stop = editor.registerUpdateListener(publish);
+    // Lines are read in the background, after the last edit. The store can
+    // change in the middle of an editor update, so the document is read once
+    // that is over.
+    const stopFacts = facts.subscribe(() => queueMicrotask(publish));
 
     return () => {
       stop();
+      stopFacts();
       tour.addExample = null;
       tour.exampleBox = null;
       tour.refresh = null;
-      tour.set({ changes: 0, ripple: 0 });
+      tour.set({ changes: 0, exampleReady: false, ripple: 0, rippled: 0 });
     };
-  }, [editor]);
+  }, [editor, facts]);
 
   return null;
 }

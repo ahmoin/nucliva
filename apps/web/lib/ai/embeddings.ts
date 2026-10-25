@@ -23,11 +23,14 @@ const getEmbeddings = () =>
 export async function ingestText({
   documentId,
   kind,
+  sourceId,
   text,
   userId,
 }: {
   documentId?: string;
   kind: (typeof vectorEmbeddings.$inferInsert)["kind"];
+  // The knowledge base source the text came from, when it came from one.
+  sourceId?: string;
   text: string;
   userId: string;
 }) {
@@ -41,7 +44,9 @@ export async function ingestText({
 
   const rows = chunks.flatMap((chunk, index) => {
     const embedding = vectors[index];
-    return embedding ? [{ chunk, documentId, embedding, kind, userId }] : [];
+    return embedding
+      ? [{ chunk, documentId, embedding, kind, sourceId, userId }]
+      : [];
   });
 
   await db.insert(vectorEmbeddings).values(rows);

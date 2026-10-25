@@ -31,15 +31,32 @@ export interface Dependent {
 // What is known about the document. It is saved with it. The mentions are kept
 // by a hash of the paragraph they were found in, so a paragraph that has not
 // changed is never read again.
+// A ripple that was put in the document: the change that set it off, and the
+// text of every place it changed before and after, so it can be put back.
+export interface RippleEntry {
+  at: number;
+  from: string;
+  id: string;
+  label: string;
+  places: { after: string; before: string }[];
+  reverted: boolean;
+  to: string;
+}
+
+// How many ripples a document keeps in its log.
+export const MAX_LOG = 30;
+
 export interface FactData {
   dependents: Record<string, Dependent[]>;
   facts: Fact[];
+  log: RippleEntry[];
   mentions: Record<string, Mention[]>;
 }
 
 export const emptyFactData = (): FactData => ({
   dependents: {},
   facts: [],
+  log: [],
   mentions: {},
 });
 
@@ -1183,9 +1200,23 @@ export function mergeExtraction(
       [hashText(paragraph)]: extraction.dependents,
     },
     facts: sound,
+    log: data.log,
     mentions: { ...data.mentions, [hashText(paragraph)]: mentions },
   };
 }
+
+const isEntry = (value: unknown): value is RippleEntry => {
+  const entry = value as Partial<RippleEntry> | null;
+
+  return (
+    typeof entry?.id === "string" &&
+    typeof entry.at === "number" &&
+    typeof entry.from === "string" &&
+    typeof entry.to === "string" &&
+    typeof entry.label === "string" &&
+    Array.isArray(entry.places)
+  );
+};
 
 // What came back from a saved document, checked.
 export function readFactData(value: unknown): FactData {
@@ -1207,6 +1238,9 @@ export function readFactData(value: unknown): FactData {
     facts: data.facts.filter(
       (fact) => typeof fact?.id === "string" && typeof fact.unit === "string"
     ),
+    log: Array.isArray(data.log)
+      ? data.log.filter(isEntry).slice(-MAX_LOG)
+      : [],
     mentions: data.mentions,
   };
 }

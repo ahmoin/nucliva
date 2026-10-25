@@ -1,18 +1,12 @@
-import { DatabaseIcon, UploadSimpleIcon } from "@phosphor-icons/react/ssr";
+import { DatabaseIcon } from "@phosphor-icons/react/ssr";
 import { db } from "@workspace/db";
 import {
   documents,
   integrations,
+  knowledgeSources,
   vectorEmbeddings,
 } from "@workspace/db/schema";
 import { Badge } from "@workspace/ui/components/badge";
-import { Button } from "@workspace/ui/components/button";
-import {
-  Card,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@workspace/ui/components/card";
 import {
   Table,
   TableBody,
@@ -24,37 +18,46 @@ import {
 import { count, desc, eq, max } from "drizzle-orm";
 import { AppShell } from "@/components/app-shell";
 import { EmptyState } from "@/components/empty-state";
+import {
+  AddSourceButton,
+  type ConnectorView,
+  KnowledgeConnectors,
+} from "@/components/knowledge-connectors";
 import { PageHeader } from "@/components/page-header";
 import { formatDate, getUserId } from "@/lib/db/documents";
+import { connectors } from "@/lib/knowledge/connectors";
+import type { IntegrationMetadata } from "@/lib/knowledge/sync";
 
 const providers = [
   {
-    description: "Import docs, slides and sheets.",
+    description: "Import your recent docs, slides and sheets.",
     name: "Google Drive",
     provider: "google_drive",
   },
   {
-    description: "Import pages and databases.",
+    description: "Import the pages you share with Nucliva.",
     name: "Notion",
     provider: "notion",
   },
   {
-    description: "Search channels and threads.",
+    description: "Import recent messages from channels you are in.",
     name: "Slack",
     provider: "slack",
   },
   {
-    description: "Upload PDFs, text and markdown from your computer.",
+    description: "Upload PDFs, text and Markdown from your computer.",
     name: "Local files",
     provider: "local",
   },
 ] as const;
 
-interface ConnectorMetadata {
-  description?: string;
-  name?: string;
-  status?: string;
-}
+const providerLabels = {
+  document: "File",
+  google_drive: "Google Drive",
+  local: "Upload",
+  notion: "Notion",
+  slack: "Slack",
+} as const;
 
 export default async function Page() {
   const userId = await getUserId();
@@ -62,7 +65,9 @@ export default async function Page() {
     .select()
     .from(integrations)
     .where(eq(integrations.userId, userId));
-  const sources = await db
+  // Files in the workspace that were indexed, and sources brought in from
+  // outside, in one list.
+  const indexedFiles = await db
     .select({
       chunks: count(vectorEmbeddings.id),
       id: documents.id,
@@ -72,75 +77,76 @@ export default async function Page() {
     .from(vectorEmbeddings)
     .innerJoin(documents, eq(vectorEmbeddings.documentId, documents.id))
     .where(eq(vectorEmbeddings.userId, userId))
-    .groupBy(documents.id)
-    .orderBy(desc(max(vectorEmbeddings.createdAt)));
+    .groupBy(documents.id);
+  const imported = await db
+    .select({
+      chunks: count(vectorEmbeddings.id),
+      id: knowledgeSources.id,
+      name: knowledgeSources.title,
+      provider: knowledgeSources.provider,
+      updated: max(knowledgeSources.updatedAt),
+      url: knowledgeSources.url,
+    })
+    .from(knowledgeSources)
+    .leftJoin(vectorEmbeddings, eq(vectorEmbeddings.sourceId, knowledgeSources.id))
+    .where(eq(knowledgeSources.userId, userId))
+    .groupBy(knowledgeSources.id)
+    .orderBy(desc(max(knowledgeSources.updatedAt)));
+  const sources = [
+    ...imported,
+    ...indexedFiles.map((file) => ({
+      ...file,
+      provider: "document" as const,
+      url: null,
+    })),
+  ].sort((a, b) => (b.updated?.getTime() ?? 0) - (a.updated?.getTime() ?? 0));
 
-  const connectors = providers.map((entry) => {
+  const views: ConnectorView[] = providers.map((entry) => {
     const row = connected.find((item) => item.provider === entry.provider);
-    const metadata = (row?.metadata ?? {}) as ConnectorMetadata;
-    const fallbackStatus = entry.provider === "local" ? "Available" : "Not connected";
+    const metadata = (row?.metadata ?? {}) as Partial<IntegrationMetadata>;
+    const localCount = imported.filter((item) => item.provider === "local").length;
+    let detail: string | null = null;
+
+    if (entry.provider === "local") {
+      detail =
+        localCount > 0
+          ? `${localCount} ${localCount === 1 ? "file" : "files"}`
+          : null;
+    } else if (row && metadata.syncedAt) {
+      detail = `${metadata.count ?? 0} imported${metadata.name ? ` from ${metadata.name}` : ""}`;
+    }
 
     return {
-      description: metadata.description ?? entry.description,
+      configured:
+        entry.provider === "local" ? true : connectors[entry.provider].configured(),
+      description: entry.description,
+      detail,
       id: entry.provider,
-      name: metadata.name ?? entry.name,
-      status: row ? (metadata.status ?? "Connected") : fallbackStatus,
+      name: entry.name,
+      status:
+        entry.provider === "local"
+          ? "Available"
+          : row
+            ? (metadata.status ?? "Connected")
+            : "Not connected",
     };
   });
 
   return (
     <AppShell title="Knowledge Base">
       <PageHeader
-        actions={
-          <Button>
-            <UploadSimpleIcon />
-            Add source
-          </Button>
-        }
+        actions={<AddSourceButton />}
         description="Connect the places your knowledge lives so drafts can draw on it."
         title="Knowledge Base"
       />
-      <div className="grid gap-4 @xl:grid-cols-2 @5xl:grid-cols-4">
-        {connectors.map((connector) => (
-          <Card key={connector.id} size="sm">
-            <CardHeader>
-              <CardTitle
-                className="line-clamp-2 break-words text-base"
-                title={connector.name}
-              >
-                {connector.name}
-              </CardTitle>
-              <CardDescription
-                className="line-clamp-3 break-words"
-                title={connector.description}
-              >
-                {connector.description}
-              </CardDescription>
-            </CardHeader>
-            <div className="flex min-w-0 flex-col items-start gap-3 px-(--card-spacing)">
-              <Badge
-                className="max-w-full"
-                title={connector.status}
-                variant={
-                  connector.status === "Connected" ? "default" : "secondary"
-                }
-              >
-                <span className="truncate">{connector.status}</span>
-              </Badge>
-              <Button size="sm" variant="outline">
-                {connector.status === "Connected" ? "Manage" : "Connect"}
-              </Button>
-            </div>
-          </Card>
-        ))}
-      </div>
+      <KnowledgeConnectors connectors={views} />
       <section className="flex flex-col gap-2">
         <h2 className="font-semibold text-muted-foreground text-xs uppercase tracking-widest">
           Indexed sources
         </h2>
         {sources.length === 0 ? (
           <EmptyState
-            description="Sources you index will show up here with their chunk counts."
+            description="Sources you upload or import show up here with their chunk counts."
             icon={DatabaseIcon}
             title="Nothing indexed yet"
           />
@@ -148,24 +154,42 @@ export default async function Page() {
           <Table className="table-fixed">
             <TableHeader>
               <TableRow>
-                <TableHead className="w-[52%]">Name</TableHead>
-                <TableHead className="w-28">Chunks</TableHead>
-                <TableHead className="w-[22%]">Updated</TableHead>
+                <TableHead>Name</TableHead>
+                <TableHead className="hidden w-36 @2xl:table-cell">
+                  From
+                </TableHead>
+                <TableHead className="w-24">Chunks</TableHead>
+                <TableHead className="hidden w-[20%] @2xl:table-cell">
+                  Updated
+                </TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {sources.map((source) => (
                 <TableRow key={source.id}>
-                  <TableCell
-                    className="truncate font-medium"
-                    title={source.name}
-                  >
-                    {source.name}
+                  <TableCell className="truncate font-medium" title={source.name}>
+                    {source.url ? (
+                      <a
+                        className="hover:underline"
+                        href={source.url}
+                        rel="noreferrer"
+                        target="_blank"
+                      >
+                        {source.name}
+                      </a>
+                    ) : (
+                      source.name
+                    )}
+                  </TableCell>
+                  <TableCell className="hidden @2xl:table-cell">
+                    <Badge variant="secondary">
+                      {providerLabels[source.provider]}
+                    </Badge>
                   </TableCell>
                   <TableCell className="truncate text-muted-foreground">
                     {source.chunks.toLocaleString("en-US")}
                   </TableCell>
-                  <TableCell className="truncate text-muted-foreground">
+                  <TableCell className="hidden truncate text-muted-foreground @2xl:table-cell">
                     {source.updated ? formatDate(source.updated) : "-"}
                   </TableCell>
                 </TableRow>

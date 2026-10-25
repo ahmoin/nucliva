@@ -7,9 +7,16 @@ export interface TourState {
   // How many suggestions are waiting in the document, and how many of those
   // came from the ripple.
   changes: number;
-  // Whether the example for the ripple has been put in the document.
+  // Whether the example for the ripple has been put in the document, and
+  // whether its lines have been read for their facts, which the ripple needs
+  // before it can follow a change.
   example: boolean;
+  exampleReady: boolean;
   ripple: number;
+  // How many ripples the document's log has, and how many times the log has
+  // been opened.
+  rippled: number;
+  logOpens: number;
   // How many agent runs and writing samples the account has, where the page
   // that shows them is open.
   runs: number;
@@ -19,7 +26,10 @@ export interface TourState {
 let state: TourState = {
   changes: 0,
   example: false,
+  exampleReady: false,
+  logOpens: 0,
   ripple: 0,
+  rippled: 0,
   runs: 0,
   samples: 0,
 };

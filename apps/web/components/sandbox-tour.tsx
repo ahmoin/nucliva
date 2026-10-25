@@ -47,7 +47,12 @@ interface Context extends TourState {
   lastDoc: string;
   path: string;
   // What things were like when this step began.
-  start: Omit<TourState, "example"> & { path: string; step: number };
+  start: Omit<TourState, "example" | "exampleReady"> & {
+    // The last document that was open, which is the one they wrote in.
+    doc: string;
+    path: string;
+    step: number;
+  };
 }
 
 type Target = string | ((context: Context) => DOMRect | null);
@@ -149,6 +154,17 @@ const agentsStep: Step = {
   title: "Hand off a whole project",
 };
 
+// Then starting a run there, which goes on while the tour does.
+const runAgentStep: Step = {
+  ask: "Click an example, then click Run agent",
+  body: "Pick one of the examples under the box, or write your own, and run it. You will see each step as it happens: planning, research, your voice, then the three files. It takes a few minutes, so carry on with the tour and come back to Agents for the files.",
+  done: ({ runs, start }) => runs > start.runs,
+  focus: '[aria-label="What should the agent make?"]',
+  orb: "solving",
+  target: '[data-tour="new-suite"]',
+  title: "Run an agent",
+};
+
 const sandboxSteps: Step[] = [
   {
     body: "A real workspace for this line of work: files, a deck, a sheet and writing samples. There are a few things worth trying, and it takes about three minutes. You do each one, and Nucliva waits for you.",
@@ -177,27 +193,27 @@ const sandboxSteps: Step[] = [
       label: "Add the example",
       run: () => tour.addExample?.(),
     },
-    ask: "Click the button to add it",
-    body: "Nucliva keeps facts in step across a document. Here is one number written three different ways. Add it, then change it.",
-    done: ({ example }) => example,
+    ask: "Click the button, then give Nucliva a few seconds to read it",
+    body: "Nucliva keeps facts in step across a document. Here is one number written three different ways. Add it, and once Nucliva has read the lines, change it.",
+    done: ({ example, exampleReady }) => example && exampleReady,
     orb: "breathing",
     title: "Now the clever part",
   },
   {
     ask: "Change the first number, then wait a moment",
-    body: "In the first line, change $4,200,000 to $4,500,000. Nucliva needs a few seconds to read the lines before it can follow your change.",
-    done: ({ ripple, start }) => ripple > start.ripple,
+    body: "In the first line, change $4,200,000 to $4,500,000. Type over it or select it and type the new amount, then click away or wait a moment.",
+    done: ({ rippled, start }) => rippled > start.rippled,
     orb: "solving",
     target: () => visible(tour.exampleBox?.()),
     title: "Change a number",
   },
   {
-    ask: "Take one: press Tab, or tap Accept",
-    body: "The other two lines now suggest the new amount, each in its own style: $4.5M stays short and 4.5 million dollars stays long. Accept them one by one, with Tab or the Accept button. Esc turns them all down.",
-    done: ({ ripple, start }) => ripple < start.ripple,
+    ask: "Open the ripple log in the toolbar",
+    body: "The other two lines changed on their own, each in its own style: $4.5M stays short and 4.5 million dollars stays long. There is nothing to accept. Every ripple goes in the log, where one click puts it back.",
+    done: ({ logOpens, start }) => logOpens > start.logOpens,
     orb: "connecting",
-    target: () => visible(tour.exampleBox?.()),
-    title: "It found the others",
+    target: '[data-tour="ripple-log"]',
+    title: "It changed the others",
   },
   {
     ask: "Open My Files",
@@ -208,14 +224,19 @@ const sandboxSteps: Step[] = [
     title: "Look around the workspace",
   },
   {
-    ask: "Click a file to open it",
-    body: "Open the sheet or the deck, or any document. They are real: the sheet is a spreadsheet and the deck is a slide editor.",
-    done: ({ path, start }) => DOCUMENT.test(path) && path !== start.path,
+    ask: "Click the sheet, the deck or another document in the list",
+    body: "Every file here opens in its own editor: a sheet is a real spreadsheet and a deck is a slide editor. Pick one from the list to see it.",
+    // Any file other than the doc they wrote in counts, even one that was
+    // already open when the step began.
+    done: ({ path, start }) => DOCUMENT.test(path) && path !== start.doc,
     orb: "working",
-    target: otherFile,
+    // Off the list, the way back to it is My Files.
+    target: (context) =>
+      otherFile(context) ?? sidebarLink("/dashboard/my-files")(),
     title: "Open another file",
   },
   agentsStep,
+  runAgentStep,
   {
     ask: "Open Style Profile",
     body: "This is where Nucliva's voice comes from: the writing samples it matches. Add your own and every draft sounds more like you.",
@@ -286,15 +307,7 @@ const welcomeSteps: Step[] = [
     title: "Add a writing sample",
   },
   agentsStep,
-  {
-    ask: "Pick an example or write your own, then click Run agent",
-    body: "Watch each step as it happens. It takes a few minutes, so you can carry on with the tour while it works. The files show up here when they are ready.",
-    done: ({ runs, start }) => runs > start.runs,
-    focus: '[aria-label="What should the agent make?"]',
-    orb: "solving",
-    target: '[data-tour="new-suite"]',
-    title: "Run your first agent",
-  },
+  runAgentStep,
   {
     action: { label: "Create a doc", run: startDoc },
     ask: "Click the button to make a doc",
@@ -438,11 +451,25 @@ const remember = (key: string, value: { done: boolean; step: number }) => {
   }
 };
 
-// Whether this browser has been through the sandbox tour, so someone who signs
-// up from the sandbox is not walked through it all again.
-const sawSandboxTour = () => {
+// When this browser was last in the sandbox as a guest. Someone who signs up
+// from the sandbox has just been walked through it, and is not walked through
+// it all again. A visit long before the account was made does not count.
+const SANDBOX_AT_KEY = "nucliva-sandbox-at";
+const FROM_SANDBOX_WITHIN = 2 * 60 * 60 * 1000;
+
+const markSandbox = () => {
   try {
-    return localStorage.getItem(SANDBOX_KEY) !== null;
+    localStorage.setItem(SANDBOX_AT_KEY, String(Date.now()));
+  } catch {
+    // Then a sign up from here gets the new account tour too.
+  }
+};
+
+const cameFromSandbox = (createdAt: number) => {
+  try {
+    const at = Number(localStorage.getItem(SANDBOX_AT_KEY));
+
+    return at > 0 && Math.abs(createdAt - at) < FROM_SANDBOX_WITHIN;
   } catch {
     return false;
   }
@@ -843,8 +870,11 @@ function Tour({
   const [index, setIndex] = useState(0);
   const [start, setStart] = useState<Context["start"]>({
     changes: 0,
+    doc: "",
     path: "",
+    logOpens: 0,
     ripple: 0,
+    rippled: 0,
     runs: 0,
     samples: 0,
     step: -1,
@@ -873,8 +903,10 @@ function Tour({
     }
   }, [index, open, ready, storageKey]);
 
+  // The last text document open, which is the one they wrote in. Sheets and
+  // decks do not count, since the writing happens in a doc.
   useEffect(() => {
-    if (DOCUMENT.test(path)) {
+    if (path.startsWith("/dashboard/docs/") && DOCUMENT.test(path)) {
       lastDoc.current = path;
     }
   }, [path]);
@@ -883,8 +915,11 @@ function Tour({
   useEffect(() => {
     setStart({
       changes: latest.current.state.changes,
+      doc: lastDoc.current,
       path: latest.current.path,
+      logOpens: latest.current.state.logOpens,
       ripple: latest.current.state.ripple,
+      rippled: latest.current.state.rippled,
       runs: latest.current.state.runs,
       samples: latest.current.state.samples,
       step: index,
@@ -1003,23 +1038,34 @@ function Tour({
 // and have seen that one.
 export function SandboxTour() {
   const { data } = authClient.useSession();
-  const [sawSandbox, setSawSandbox] = useState<boolean | null>(null);
+  const [fromSandbox, setFromSandbox] = useState<boolean | null>(null);
   const user = data?.user as
     | { createdAt?: Date | string; isAnonymous?: boolean | null }
     | undefined;
+  const guest = user?.isAnonymous === true;
   const createdAt = user?.createdAt ? new Date(user.createdAt).getTime() : 0;
 
-  useEffect(() => setSawSandbox(sawSandboxTour()), []);
+  useEffect(() => {
+    if (!user) {
+      return;
+    }
 
-  if (!user || sawSandbox === null) {
+    if (guest) {
+      markSandbox();
+    }
+
+    setFromSandbox(cameFromSandbox(createdAt));
+  }, [createdAt, guest, user]);
+
+  if (!user || fromSandbox === null) {
     return null;
   }
 
-  if (user.isAnonymous === true) {
+  if (guest) {
     return <Tour steps={sandboxSteps} storageKey={SANDBOX_KEY} />;
   }
 
-  return !sawSandbox && Date.now() - createdAt < NEW_FOR ? (
+  return !fromSandbox && Date.now() - createdAt < NEW_FOR ? (
     <Tour steps={welcomeSteps} storageKey={WELCOME_KEY} />
   ) : null;
 }

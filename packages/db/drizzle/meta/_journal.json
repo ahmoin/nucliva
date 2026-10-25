@@ -29,6 +29,13 @@
       "when": 1792268403966,
       "tag": "0003_careful_slipstream",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1792948819097,
+      "tag": "0004_green_micromax",
+      "breakpoints": true
     }
   ]
 }

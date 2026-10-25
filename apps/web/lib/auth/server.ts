@@ -39,6 +39,14 @@ export const auth = betterAuth({
           .update(schema.vectorEmbeddings)
           .set({ userId: to })
           .where(eq(schema.vectorEmbeddings.userId, from));
+        await db
+          .update(schema.knowledgeSources)
+          .set({ userId: to })
+          .where(eq(schema.knowledgeSources.userId, from));
+        await db
+          .update(schema.agentRuns)
+          .set({ userId: to })
+          .where(eq(schema.agentRuns.userId, from));
       },
     }),
     nextCookies(),

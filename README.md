@@ -14,7 +14,7 @@ An AI writing workspace that writes in your voice. Docs, slides and sheets in on
 - **AI chat and edits.** Ask for a change and the edit lands in the document as green and red suggestions, down to single words, each with its own Accept and Reject, plus Accept All and Reject All. Chat history is saved per document and works as a tree, so you can go back, edit, branch and copy.
 - **Web research.** Ask it to research something and it searches with Tavily, shows the steps and sources, and cites only when you ask.
 - **Inline autocomplete.** Ghost text as you type, accepted with Tab.
-- **The ripple.** Change a number, amount, percentage or date and Nucliva suggests the same change everywhere else the document states it, each written the way that place writes it (`$4.2M` stays short, `$4,200,000` stays long). Dates that follow from other dates ("the beta starts 6 weeks before launch") are recalculated. Tab accepts the next suggestion, Esc dismisses them all. See [How the ripple works](#how-the-ripple-works).
+- **The ripple.** Change a number, amount, percentage or date and Nucliva makes the same change everywhere else the document states it, each written the way that place writes it (`$4.2M` stays short, `$4,200,000` stays long). Dates that follow from other dates ("the beta starts 6 weeks before launch") are recalculated. There is nothing to accept: each ripple goes in a log in the toolbar, where it can be undone. See [How the ripple works](#how-the-ripple-works).
 - **Suite agents.** Ask for something like "Q3 investor update" on the Agents page and an agent plans it, researches it with Tavily, matches your voice, then writes a doc, a sheet and a deck with the same facts. The three are linked to each other and arrive as suggestions: the doc as green suggestions to accept one by one, the sheet and deck with Accept and Reject. It runs in the background as a Nebius Serverless job. See [Suite agents on Nebius Serverless](#suite-agents-on-nebius-serverless).
 - **Sheets and slides.** Early versions built on FortuneSheet and a custom designer.
 - **Style profile and knowledge base.** Paste past writing so drafts sound like you. Text is chunked and embedded into pgvector.
@@ -62,6 +62,25 @@ The three sizes of NVIDIA Nemotron 3 are matched to the job: the smallest where 
 - **Thinking on or off per call.** Nemotron reasons before it answers unless told not to. Token Factory passes `enable_thinking: false` through to the model's chat template, so autocomplete and fact reading skip it and answer quickly, while the writing models keep it.
 - **Structured output.** Edits, extracted facts, tone markers, agent plans, sheets and decks all come back as JSON that matches a Zod schema, through the same API.
 - **Embeddings in the same place.** The embedding model runs on the same account and key as the chat models, so there is one provider to set up.
+
+### How fast is autocomplete?
+
+`apps/web/scripts/latency-bench.mts` times the call the editor makes for ghost text (Nemotron 3 Nano, thinking off, the same prompt) on five half-written sentences, and with `--thinking` the same call with thinking on.
+
+```bash
+cd apps/web
+pnpm dlx tsx scripts/latency-bench.mts --runs 10              # 50 calls (needs NEBIUS_API_KEY)
+pnpm dlx tsx scripts/latency-bench.mts --runs 4 --thinking    # also with thinking on
+```
+
+Measured on October 24, 2026 from a home connection, model round trip only:
+
+| Nano | Calls | Median | p90 | Min | Max |
+| --- | --- | --- | --- | --- | --- |
+| Thinking off (what autocomplete uses) | 50 | 694ms | 795ms | 477ms | 1060ms |
+| Thinking on | 20 | 10752ms | 14400ms | 4710ms | 21266ms |
+
+Turning thinking off makes the suggestion about 15 times faster, which is the difference between ghost text that keeps up with typing and ghost text that arrives after you have moved on. Network and load vary, so run it again before quoting it.
 
 ### Other Nebius services
 
@@ -145,6 +164,25 @@ To set it up:
 
 Without `NEBIUS_SECRET_ID`, those keys are passed to the job as plain environment variables.
 
+## Knowledge base connectors
+
+The Knowledge Base page brings outside material in, so drafts and agents can draw on it. Everything is split into chunks and embedded into pgvector, and each draft looks up the passages that match the request.
+
+- **Local files:** upload PDFs, text, Markdown or CSV. No setup.
+- **Google Drive:** the 25 most recent Docs, Slides, Sheets and text files, read only.
+- **Notion:** the pages the user shares with the integration when they connect.
+- **Slack:** recent messages from up to 10 public channels the user is in.
+
+Each app needs an OAuth app of its own. The redirect URL for each is `<your app URL>/api/integrations/<provider>/callback`, where the provider is `google_drive`, `notion` or `slack`.
+
+| App | Set up | Variables |
+| --- | --- | --- |
+| Google Drive | In the Google Cloud project used for sign in, enable the Google Drive API, add the `drive.readonly` scope to the consent screen, and add the redirect URL to the OAuth client | uses `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` |
+| Notion | Create a public integration at notion.so/my-integrations with read content capability, and add the redirect URL | `NOTION_CLIENT_ID`, `NOTION_CLIENT_SECRET` |
+| Slack | Create an app at api.slack.com/apps, add the user token scopes `channels:read` and `channels:history`, and add the redirect URL (Slack needs HTTPS) | `SLACK_CLIENT_ID`, `SLACK_CLIENT_SECRET` |
+
+An app without its keys shows **Needs setup** on its card instead of Connect.
+
 ## How the ripple works
 
 A model understands, and code does the math.
@@ -152,7 +190,7 @@ A model understands, and code does the math.
 1. **Reading.** In the background, each paragraph that looks like it has a fact in it is read by a Nemotron model, which says what each fact is called and where the paragraph states it. Its answer is checked in code: every value is read from the words, not taken from the model.
 2. **Noticing.** When the caret leaves a fact that was changed (or pauses on it), the new value is read from the text.
 3. **Rippling.** Every other place that states the same fact gets a suggestion, written in that place's own format. Facts worked out from others, like dates, are recalculated in code. A model never does the arithmetic.
-4. **Settling.** The suggestions are the same green and red ones the chat makes. Sentences that lean on a fact without stating it are rewritten by the model and shown more quietly, with a dashed underline.
+4. **Applying.** The other places change at once, with nothing to accept, so one edit never leaves dozens of prompts behind. Sentences that lean on a fact without stating it are rewritten by the model and go in too. Every ripple is recorded in the **ripple log** in the toolbar, saved with the document, where one click puts it back. Undo works as well.
 
 Everything stays in one document. The facts it has found are saved with it.
 

@@ -4,6 +4,7 @@ import { getChatModel } from "@/lib/ai/nebius";
 import {
   editPrompt,
   ghostwriterPrompt,
+  knowledgePrompt,
   researchPrompt,
   toneAnalysisPrompt,
 } from "@/lib/ai/prompts";
@@ -80,9 +81,11 @@ export async function suggestEdits({
   sources?: Source[];
   userId: string;
 }) {
-  // The search and the look at the user's style do not depend on each other.
-  const [samples, found] = await Promise.all([
+  // The search, the look at the user's style and the look in their knowledge
+  // base do not depend on each other.
+  const [samples, known, found] = await Promise.all([
     findSimilarChunks({ kind: "style", query: prompt, userId }),
+    findSimilarChunks({ kind: "context", limit: 6, query: prompt, userId }),
     sources
       ? { error: null, sources }
       : research
@@ -93,6 +96,7 @@ export async function suggestEdits({
     samples.length > 0 ? await extractToneMarkers(samples) : null;
   const system = [
     ghostwriterPrompt(toneMarkers, samples),
+    known.length > 0 ? knowledgePrompt(known) : null,
     found.sources.length > 0 ? researchPrompt(found.sources, cite) : null,
     editPrompt(blocks),
   ]

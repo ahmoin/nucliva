@@ -95,7 +95,11 @@ import {
 import { DraftBar } from "@/components/document-draft-bar";
 import { DocumentPages, PAGE_WIDTH } from "@/components/document-pages";
 import { PendingDocPlugin } from "@/components/document-pending";
-import { RipplePlugin, useFactStore } from "@/components/document-ripple";
+import {
+  RippleLog,
+  RipplePlugin,
+  useFactStore,
+} from "@/components/document-ripple";
 import { Ruler } from "@/components/document-ruler";
 import {
   $blockOf,
@@ -111,6 +115,7 @@ import {
 } from "@/components/document-styles";
 import { DOCUMENT_TRANSFORMERS } from "@/components/document-table";
 import { TourBridge } from "@/components/sandbox-tour-bridge";
+import { tour } from "@/components/sandbox-tour-store";
 import type { PendingDoc } from "@/lib/agents/suite";
 import { localDb } from "@/lib/db/local";
 
@@ -1221,6 +1226,12 @@ function DocumentSurface({
                 />
                 <Toolbar />
                 <div className="flex shrink-0 items-center border bg-card p-1">
+                  <RippleLog
+                    onOpen={() =>
+                      tour.set({ logOpens: tour.get().logOpens + 1 })
+                    }
+                    store={facts}
+                  />
                   <Toggle
                     aria-label="Ruler"
                     className={toggleClass}
@@ -1289,7 +1300,7 @@ function DocumentSurface({
         <div className="sticky bottom-4 z-10 mx-auto w-full max-w-2xl">
           <DraftBar change={change} documentId={id} onChange={setChange} />
         </div>
-        <TourBridge />
+        <TourBridge facts={facts} />
         <PendingDocPlugin id={id} pending={suggested} />
         <HistoryPlugin />
         <AutocompletePlugin />

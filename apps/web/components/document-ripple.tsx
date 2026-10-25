@@ -1,7 +1,17 @@
 "use client";
 
 import { useLexicalComposerContext } from "@lexical/react/LexicalComposerContext";
-import { $dfs, mergeRegister } from "@lexical/utils";
+import { $dfs } from "@lexical/utils";
+import { ClockCounterClockwiseIcon } from "@phosphor-icons/react";
+import { Button } from "@workspace/ui/components/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuGroup,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuTrigger,
+} from "@workspace/ui/components/dropdown-menu";
 import {
   $getNodeByKey,
   $getSelection,
@@ -9,15 +19,18 @@ import {
   $isElementNode,
   $isRangeSelection,
   $isTextNode,
-  COMMAND_PRIORITY_HIGH,
   type ElementNode,
-  KEY_ESCAPE_COMMAND,
-  KEY_TAB_COMMAND,
   type LexicalEditor,
   type LexicalNode,
+  type RangeSelection,
   type UpdateListener,
 } from "lexical";
-import { useEffect, useLayoutEffect, useState } from "react";
+import {
+  useEffect,
+  useLayoutEffect,
+  useState,
+  useSyncExternalStore,
+} from "react";
 import { createPortal } from "react-dom";
 import {
   $changes,
@@ -35,21 +48,24 @@ import {
   hashText,
   kindOf,
   locateMentions,
+  MAX_LOG,
   mergeExtraction,
   type Parsed,
   parseMention,
   proposeRipple,
+  type RippleEntry,
   readFactData,
   sameValue,
   valueIn,
 } from "@/lib/editor/facts";
 
 // The ripple. When a fact in the document is changed, the other places that
-// state it get suggestions to match, in the same suggestion system the chat
-// uses: green and red in the text, each with its own Accept and Reject. See
-// lib/editor/facts.ts for how the new values are worked out. This file is the part
-// that knows about the editor: it reads paragraphs for facts in the background,
-// notices when one is changed, and puts the suggestions in the document.
+// state it are changed to match, at once, with nothing to accept. Every ripple
+// goes in a log saved with the document, where it can be put back, and the
+// usual undo takes it back too. See lib/editor/facts.ts for how the new values
+// are worked out. This file is the part that knows about the editor: it reads
+// paragraphs for facts in the background, notices when one is changed, and
+// changes the other places.
 
 export const RIPPLE_PREFIX = "ripple:";
 const PREFIX = RIPPLE_PREFIX;
@@ -62,7 +78,10 @@ const MAX_REWRITES = 6;
 const MAX_FACTS_SENT = 60;
 const REQUEST_TIMEOUT = 20_000;
 const PAUSE_AFTER_FAILURES = 60_000;
-const READS_AT_ONCE = 2;
+// One at a time, so each paragraph is read knowing the facts of the ones read
+// before it. Two read together cannot see each other, and the same fact
+// written two ways ends up as two facts.
+const READS_AT_ONCE = 1;
 
 type Timer = ReturnType<typeof setTimeout>;
 
@@ -158,40 +177,59 @@ interface Caret {
   offset: number;
 }
 
-// Where the caret is: the block, and how far into its text.
-function $caret(): Caret | null {
-  const selection = $getSelection();
+type Point = RangeSelection["anchor"];
 
-  if (!($isRangeSelection(selection) && selection.isCollapsed())) {
-    return null;
-  }
-
-  const { anchor } = selection;
-  const block = $blockOf(anchor.getNode());
+// Where a point of the selection is: the block, and how far into its text.
+function $pointAt(point: Point): Caret | null {
+  const block = $blockOf(point.getNode());
 
   if (!block) {
     return null;
   }
 
-  if (anchor.type === "text") {
+  if (point.type === "text") {
     const segment = $segments(block).find((item) =>
-      item.node.is(anchor.getNode())
+      item.node.is(point.getNode())
     );
 
     return segment
-      ? { key: block.getKey(), offset: segment.start + anchor.offset }
+      ? { key: block.getKey(), offset: segment.start + point.offset }
       : null;
   }
 
-  const node = anchor.getNode();
+  const node = point.getNode();
   const before = $isElementNode(node)
     ? node
         .getChildren()
-        .slice(0, anchor.offset)
+        .slice(0, point.offset)
         .reduce((total, child) => total + child.getTextContentSize(), 0)
     : 0;
 
   return { key: block.getKey(), offset: node.is(block) ? before : 0 };
+}
+
+// Where the caret is. A selection inside one block counts as a caret at its
+// start, since a number is often changed by selecting it and typing over it.
+function $caret(): Caret | null {
+  const selection = $getSelection();
+
+  if (!$isRangeSelection(selection)) {
+    return null;
+  }
+
+  const anchor = $pointAt(selection.anchor);
+
+  if (selection.isCollapsed() || !anchor) {
+    return anchor;
+  }
+
+  const focus = $pointAt(selection.focus);
+
+  if (focus?.key !== anchor.key) {
+    return null;
+  }
+
+  return { key: anchor.key, offset: Math.min(anchor.offset, focus.offset) };
 }
 
 const $rippleChanges = () =>
@@ -218,11 +256,6 @@ interface Edit {
   start: number;
   to: string;
   value: number | string;
-}
-
-interface Hint {
-  key: string;
-  kind: string;
 }
 
 interface Target {
@@ -307,9 +340,10 @@ function $changeOf(done: Active): (Change & { after: string }) | null {
   return { after, text: valueIn(written) ?? written, written };
 }
 
-// The sentences made true again by the model, as quieter suggestions. Only
-// where the paragraph is still the one the sentence was read from.
+// The sentences made true again by the model. Only where the paragraph is
+// still the one the sentence was read from. Returns what each one said before.
 function $applyRewrites(rewrites: (Rewrite | null)[], run: string) {
+  const before = new Map<string, string>();
   let counter = 0;
 
   for (const item of rewrites) {
@@ -320,16 +354,116 @@ function $applyRewrites(rewrites: (Rewrite | null)[], run: string) {
     }
 
     counter += 1;
+    before.set(item.key, item.text);
     $suggestRewrite(node, item.text.replace(item.sentence, item.next), {
       prefix: `${PREFIX}${run}:soft:${counter}:`,
       soft: true,
     });
   }
+
+  return before;
+}
+
+// The changes a run made are worked out as suggestions, then put in at once,
+// with nothing to accept: a fact changed in one place is changed everywhere.
+// Returns each place that changed, as it was and as it is now.
+function $settleRun(run: string, before: Map<string, string>) {
+  const ids = $changes()
+    .filter((change) => change.id.startsWith(`${PREFIX}${run}:`))
+    .map((change) => change.id);
+
+  $resolve(new Set(ids), true);
+
+  return [...before].flatMap(([key, text]) => {
+    const node = $getNodeByKey(key);
+    const after = node ? node.getTextContent() : null;
+
+    return after !== null && after !== text ? [{ after, before: text }] : [];
+  });
+}
+
+// Writes a ripple into the log, or adds places to one already there.
+function logged(
+  data: FactData,
+  entry: Omit<RippleEntry, "places" | "reverted">,
+  places: RippleEntry["places"]
+): FactData {
+  const known = data.log.find((item) => item.id === entry.id);
+  const log = known
+    ? data.log.map((item) =>
+        item.id === entry.id
+          ? { ...item, places: [...item.places, ...places] }
+          : item
+      )
+    : [...data.log, { ...entry, places, reverted: false }];
+
+  return { ...data, log: log.slice(-MAX_LOG) };
+}
+
+// Puts back what a ripple changed, in every place that still says what the
+// ripple wrote. Returns how many places it put back.
+export function revertRipple(
+  editor: LexicalEditor,
+  store: FactStore,
+  id: string
+) {
+  const entry = store.data.log.find((item) => item.id === id);
+
+  if (!entry || entry.reverted) {
+    return 0;
+  }
+
+  const prefix = `${PREFIX}undo:${id}:`;
+  let undone = 0;
+
+  editor.update(
+    () => {
+      const left = [...entry.places];
+
+      for (const leaf of $leaves()) {
+        const at = left.findIndex((place) => place.after === leaf.text);
+        const [place] = at >= 0 ? left.splice(at, 1) : [];
+
+        if (place) {
+          undone += 1;
+          $suggestRewrite(leaf.node, place.before, {
+            prefix: `${prefix}${undone}:`,
+          });
+        }
+      }
+
+      $resolve(
+        new Set(
+          $changes()
+            .filter((change) => change.id.startsWith(prefix))
+            .map((change) => change.id)
+        ),
+        true
+      );
+    },
+    { discrete: true }
+  );
+  store.set({
+    ...store.data,
+    log: store.data.log.map((item) =>
+      item.id === id ? { ...item, reverted: true } : item
+    ),
+  });
+
+  return undone;
+}
+
+// What was just changed, shown over the paragraph that set it off.
+interface Notice {
+  count: number;
+  id: string;
+  key: string;
+  kind: string;
+  to: string;
 }
 
 interface Show {
-  hint: (hint: Hint) => void;
-  pending: (count: number) => void;
+  notice: (notice: Notice) => void;
 }
 
 // The part that knows about the editor, kept apart from React.
@@ -356,22 +490,6 @@ class Ripple {
 
   start() {
     const stopWatching = this.editor.registerUpdateListener(this.onUpdate);
-    // Tab takes the next suggestion and moves on to the one after it. Esc
-    // turns them all down. They are above the autocomplete's own handlers, but
-    // only do anything while there is a ripple to settle, so Tab still takes an
-    // autocomplete suggestion, and indents, the rest of the time.
-    const stopKeys = mergeRegister(
-      this.editor.registerCommand(
-        KEY_TAB_COMMAND,
-        this.onTab,
-        COMMAND_PRIORITY_HIGH
-      ),
-      this.editor.registerCommand(
-        KEY_ESCAPE_COMMAND,
-        this.onEscape,
-        COMMAND_PRIORITY_HIGH
-      )
-    );
     // Paragraphs that were never read, in a document that was just opened.
     const first = setTimeout(() => this.readAll(), 1500);
 
@@ -388,7 +506,6 @@ class Ripple {
       }
 
       stopWatching();
-      stopKeys();
     };
   }
 
@@ -513,10 +630,11 @@ class Ripple {
 
   // ----- Changing a fact -----
 
-  // The other places that state it get suggestions to match.
+  // The other places that state it are changed to match, and the change goes
+  // in the log, where it can be put back.
   private ripple(edit: Edit) {
     const run = crypto.randomUUID().slice(0, 8);
-    const outcome = { made: 0, touched: new Set<string>() };
+    const outcome = { places: 0, touched: new Set<string>() };
 
     this.editor.update(() => this.$apply(edit, run, outcome), {
       onUpdate: () => {
@@ -524,8 +642,14 @@ class Ripple {
           (item) => item.id === edit.factId
         );
 
-        if (outcome.made > 0) {
-          this.show.hint({ key: edit.key, kind: kindOf(fact?.unit ?? "") });
+        if (outcome.places > 0) {
+          this.show.notice({
+            count: outcome.places,
+            id: run,
+            key: edit.key,
+            kind: kindOf(fact?.unit ?? ""),
+            to: edit.to,
+          });
         }
 
         this.rewrite(edit, run, outcome.touched).catch(() => undefined);
@@ -533,10 +657,22 @@ class Ripple {
     });
   }
 
+  private entryOf(edit: Edit, run: string) {
+    const fact = this.store.data.facts.find((item) => item.id === edit.factId);
+
+    return {
+      at: Date.now(),
+      from: edit.from,
+      id: run,
+      label: fact?.label ?? "Fact",
+      to: edit.to,
+    };
+  }
+
   private $apply(
     edit: Edit,
     run: string,
-    outcome: { made: number; touched: Set<string> }
+    outcome: { places: number; touched: Set<string> }
   ) {
     // A ripple that was not settled is made over, from this change.
     const old = $rippleChanges().map((change) => change.id);
@@ -555,6 +691,7 @@ class Ripple {
       },
       data: this.store.data,
     });
+    const before = new Map<string, string>();
     let counter = 0;
 
     for (const leaf of leaves) {
@@ -564,7 +701,8 @@ class Ripple {
 
       if (mine.length > 0) {
         counter += 1;
-        outcome.made += $replaceSpans(
+        before.set(leaf.key, leaf.text);
+        $replaceSpans(
           leaf.node,
           mine.map((proposal, index) => ({
             end: proposal.end,
@@ -577,7 +715,13 @@ class Ripple {
       }
     }
 
-    this.store.set({ ...this.store.data, facts: result.facts });
+    const places = $settleRun(run, before);
+    const data = { ...this.store.data, facts: result.facts };
+
+    outcome.places = places.length;
+    this.store.set(
+      places.length > 0 ? logged(data, this.entryOf(edit, run), places) : data
+    );
   }
 
   // Sentences that lean on a fact without stating it, in paragraphs with no
@@ -628,8 +772,8 @@ class Ripple {
     }
   }
 
-  // The model rewrites sentences that lean on the fact, and they are shown as
-  // quieter suggestions.
+  // The model rewrites sentences that lean on the fact, and they go in with the
+  // rest of the ripple, in the same entry of the log.
   private async rewrite(edit: Edit, run: string, touched: Set<string>) {
     const fact = this.store.data.facts.find((item) => item.id === edit.factId);
     const targets = this.targets(edit, touched);
@@ -642,9 +786,17 @@ class Ripple {
       targets.map((target) => this.askRewrite(target, edit, fact.label))
     );
 
-    if (!this.lifetime.signal.aborted) {
-      this.editor.update(() => $applyRewrites(rewrites, run));
+    if (this.lifetime.signal.aborted) {
+      return;
     }
+
+    this.editor.update(() => {
+      const places = $settleRun(run, $applyRewrites(rewrites, run));
+
+      if (places.length > 0) {
+        this.store.set(logged(this.store.data, this.entryOf(edit, run), places));
+      }
+    });
   }
 
   // The fact the caret is in has been left, or has not been touched for a
@@ -758,8 +910,6 @@ class Ripple {
     tags,
   }) => {
     editorState.read(() => {
-      this.show.pending($rippleChanges().length);
-
       if (tags.has("historic")) {
         this.active = null;
 
@@ -777,67 +927,47 @@ class Ripple {
       }
     });
   };
-
-  private readonly onTab = (event: KeyboardEvent) => {
-    const [next] = this.editor.getEditorState().read($rippleChanges);
-
-    if (!next || event.shiftKey) {
-      return false;
-    }
-
-    event.preventDefault();
-    this.editor.update(() => $resolve(new Set([next.id]), true), {
-      onUpdate: () => {
-        const [following] = this.editor.getEditorState().read($rippleChanges);
-
-        this.editor
-          .getElementByKey(following?.keys[0] ?? "")
-          ?.scrollIntoView({ behavior: "smooth", block: "center" });
-      },
-    });
-
-    return true;
-  };
-
-  private readonly onEscape = () => {
-    const changes = this.editor.getEditorState().read($rippleChanges);
-
-    if (changes.length === 0) {
-      return false;
-    }
-
-    this.editor.update(() =>
-      $resolve(new Set(changes.map((change) => change.id)), false)
-    );
-
-    return true;
-  };
 }
+
+// How long the note about a ripple stays up.
+const NOTICE_FOR = 8000;
+
+const plural = (count: number, one: string) =>
+  `${count} ${count === 1 ? one : `${one}s`}`;
 
 export function RipplePlugin({ store }: { store: FactStore }) {
   const [editor] = useLexicalComposerContext();
-  const [hint, setHint] = useState<Hint | null>(null);
-  const [pending, setPending] = useState(0);
+  const [notice, setNotice] = useState<Notice | null>(null);
   const [place, setPlace] = useState<{ left: number; top: number } | null>(
     null
   );
 
   useEffect(
-    () =>
-      new Ripple(editor, store, { hint: setHint, pending: setPending }).start(),
+    () => new Ripple(editor, store, { notice: setNotice }).start(),
     [editor, store]
   );
 
-  // The hint sits over the paragraph that was edited.
+  // The note goes away by itself after a moment.
+  useEffect(() => {
+    if (!notice) {
+      return;
+    }
+
+    const timer = setTimeout(() => setNotice(null), NOTICE_FOR);
+
+    return () => clearTimeout(timer);
+  }, [notice]);
+
+  // The note sits over the paragraph that was edited.
   useLayoutEffect(() => {
-    if (!hint || pending === 0) {
+    if (!notice) {
       setPlace(null);
 
       return;
     }
 
     const move = () => {
-      const element = editor.getElementByKey(hint.key);
+      const element = editor.getElementByKey(notice.key);
 
       if (!element) {
         setPlace(null);
@@ -848,7 +978,7 @@ export function RipplePlugin({ store }: { store: FactStore }) {
       const box = element.getBoundingClientRect();
 
       // Above the paragraph, so that it does not cover the lines under it,
-      // where the suggestions are. It stays on the screen.
+      // which are the ones that changed. It stays on the screen.
       setPlace({
         left: Math.max(8, box.left),
         top: Math.min(Math.max(8, box.top - 38), window.innerHeight - 44),
@@ -866,32 +996,128 @@ export function RipplePlugin({ store }: { store: FactStore }) {
       window.removeEventListener("resize", move);
       stop();
     };
-  }, [editor, hint, pending]);
+  }, [editor, notice]);
 
-  if (!(hint && place && pending > 0)) {
+  if (!(notice && place)) {
     return null;
   }
 
   return createPortal(
     <div
-      className="motion-safe:fade-in-0 motion-safe:slide-in-from-top-1 pointer-events-none fixed z-[65] flex items-center gap-2 border bg-popover px-3 py-1.5 text-popover-foreground text-xs shadow-md motion-safe:animate-in motion-safe:duration-150"
+      className="motion-safe:fade-in-0 motion-safe:slide-in-from-top-1 fixed z-[65] flex items-center gap-3 border bg-popover px-3 py-1.5 text-popover-foreground text-xs shadow-md motion-safe:animate-in motion-safe:duration-150"
       role="status"
       style={{ left: place.left, top: place.top }}
     >
       <span>
-        {pending === 1
-          ? `1 place uses this ${hint.kind}.`
-          : `${pending} places use this ${hint.kind}.`}
+        Updated {plural(notice.count, "other place")} to match{" "}
+        <span className="font-medium">{notice.to}</span>.
       </span>
-      <kbd className="border bg-muted px-1.5 py-0.5 font-mono text-[10px]">
-        Tab
-      </kbd>
-      <span>to update</span>
-      <kbd className="border bg-muted px-1.5 py-0.5 font-mono text-[10px]">
-        Esc
-      </kbd>
-      <span className="text-muted-foreground">to dismiss</span>
+      <button
+        className="font-semibold text-primary uppercase tracking-widest hover:underline"
+        onClick={() => {
+          revertRipple(editor, store, notice.id);
+          setNotice(null);
+        }}
+        type="button"
+      >
+        Undo
+      </button>
     </div>,
     document.body
+  );
+}
+
+const ago = (at: number) => {
+  const minutes = Math.round((Date.now() - at) / 60_000);
+
+  if (minutes < 1) {
+    return "just now";
+  }
+
+  if (minutes < 60) {
+    return `${minutes} min ago`;
+  }
+
+  const hours = Math.round(minutes / 60);
+
+  return hours < 24
+    ? `${hours} hr ago`
+    : new Date(at).toLocaleDateString("en-US", {
+        day: "numeric",
+        month: "short",
+      });
+};
+
+// Every ripple in the document, newest first, each with a way to put it back.
+export function RippleLog({
+  onOpen,
+  store,
+}: {
+  onOpen?: () => void;
+  store: FactStore;
+}) {
+  const [editor] = useLexicalComposerContext();
+  const data = useSyncExternalStore(
+    (listener) => store.subscribe(listener),
+    () => store.data,
+    () => store.data
+  );
+  const entries = [...data.log].reverse();
+
+  return (
+    <DropdownMenu
+      onOpenChange={(open) => {
+        if (open) {
+          onOpen?.();
+        }
+      }}
+    >
+      <DropdownMenuTrigger
+        render={
+          <Button
+            aria-label="Ripple log"
+            className="gap-1.5"
+            data-tour="ripple-log"
+            size="sm"
+            variant="ghost"
+          />
+        }
+      >
+        <ClockCounterClockwiseIcon />
+        {entries.length > 0 ? (
+          <span className="tabular-nums">{entries.length}</span>
+        ) : null}
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" className="w-80">
+        <DropdownMenuGroup>
+          <DropdownMenuLabel>Ripple log</DropdownMenuLabel>
+          {entries.length === 0 ? (
+            <p className="px-2 pb-2 text-muted-foreground text-xs">
+              Change a number or a date, and every other place in the doc that
+              states it is updated. Each change shows up here.
+            </p>
+          ) : null}
+          {entries.map((entry) => (
+            <DropdownMenuItem
+              className="flex items-start gap-3"
+              disabled={entry.reverted}
+              key={entry.id}
+              onClick={() => revertRipple(editor, store, entry.id)}
+            >
+              <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+                <span className="truncate font-medium">{entry.label}</span>
+                <span className="truncate text-muted-foreground text-xs">
+                  {entry.from} to {entry.to}, {plural(entry.places.length, "place")}
+                  , {ago(entry.at)}
+                </span>
+              </div>
+              <span className="shrink-0 font-semibold text-primary text-xs uppercase tracking-widest">
+                {entry.reverted ? "Undone" : "Undo"}
+              </span>
+            </DropdownMenuItem>
+          ))}
+        </DropdownMenuGroup>
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 }

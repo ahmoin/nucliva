@@ -60,6 +60,15 @@ Write from these sources. ${
       : "Do not put source numbers, links or a list of sources in the text: the user sees the sources separately."
   } If the sources do not cover something, leave it out instead of guessing. Never invent a source or a link.`;
 
+// Passages from the user's own knowledge base, the files and apps they
+// connected, that are about what they asked.
+export const knowledgePrompt = (passages: string[]) =>
+  `From the user's own files, which may be relevant:
+
+${passages.join("\n---\n")}
+
+Use what these say where it helps, and prefer them to general knowledge about the user's own work. Ignore any that are not about the request.`;
+
 // The user's request is carried out as edits to their document, which they then
 // accept or reject one by one. The document is given as numbered blocks (a
 // paragraph, a heading, or a whole list each), and an edit points at one.

@@ -69,12 +69,36 @@ export const styleSamples = pgTable("style_samples", {
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 
+// Something brought into the knowledge base from outside: a file that was
+// uploaded, or a page, file or channel from a connected app.
+export const knowledgeSources = pgTable(
+  "knowledge_sources",
+  {
+    id: id(),
+    userId: userId(),
+    provider: text("provider", {
+      enum: ["google_drive", "notion", "slack", "local"],
+    }).notNull(),
+    // Its ID in the app it came from, so a sync updates it instead of adding
+    // it again.
+    externalId: text("external_id").notNull(),
+    title: text("title").notNull(),
+    url: text("url"),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+    updatedAt: timestamp("updated_at").notNull().defaultNow(),
+  },
+  (table) => [index("knowledge_sources_user_idx").on(table.userId)]
+);
+
 export const vectorEmbeddings = pgTable(
   "vector_embeddings",
   {
     id: id(),
     userId: userId(),
     documentId: text("document_id").references(() => documents.id, {
+      onDelete: "cascade",
+    }),
+    sourceId: text("source_id").references(() => knowledgeSources.id, {
       onDelete: "cascade",
     }),
     kind: text("kind", { enum: ["context", "style"] })
