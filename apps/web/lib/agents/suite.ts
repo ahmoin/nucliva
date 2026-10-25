@@ -114,14 +114,18 @@ class Progress {
   }
 }
 
+// null means the search failed, not that it found nothing.
 async function search(query: string) {
-  try {
-    return await searchWeb(query);
-  } catch (error) {
-    console.error("agent search failed:", error);
-
-    return [];
+  for (let attempt = 0; attempt < 2; attempt += 1) {
+    try {
+      return await searchWeb(query);
+    } catch (error) {
+      console.error("agent search failed:", error);
+      await new Promise((resolve) => setTimeout(resolve, 1500));
+    }
   }
+
+  return null;
 }
 
 const withoutFences = (text: string) =>
@@ -193,14 +197,27 @@ export async function runSuite(runId: string) {
       .where(eq(agentRuns.id, runId));
     await progress.done("plan", title);
 
-    const queries = plan.queries
+    const planned = plan.queries
       .map((query) => query.trim())
       .filter(Boolean)
       .slice(0, MAX_QUERIES);
+    const queries = planned.length > 0 ? planned : [prompt.slice(0, 300)];
 
     await progress.start("research", queries.join(" · "));
 
-    const found = (await Promise.all(queries.map(search))).flat();
+    // One at a time: parallel searches trip Tavily's rate limit.
+    const results: (Source[] | null)[] = [];
+
+    for (const query of queries) {
+      results.push(await search(query));
+    }
+
+    if (results.every((result) => !result?.length)) {
+      results.push(await search(prompt.slice(0, 300)));
+    }
+
+    const failed = results.every((result) => result === null);
+    const found = results.flatMap((result) => result ?? []);
     const seen = new Set<string>();
     const sources = found
       .filter((source) => !seen.has(source.url) && seen.add(source.url))
@@ -214,7 +231,9 @@ export async function runSuite(runId: string) {
       "research",
       sources.length > 0
         ? `${sources.length} sources from ${queries.length} ${queries.length === 1 ? "search" : "searches"}`
-        : "Nothing found, so the files lean on what you already have"
+        : failed
+          ? "Web search failed, so the files lean on what you already have"
+          : "Nothing found, so the files lean on what you already have"
     );
 
     await progress.start("voice");

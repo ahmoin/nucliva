@@ -2,7 +2,7 @@
 
 import { CodeNode } from "@lexical/code";
 import { $createLinkNode, $isLinkNode } from "@lexical/link";
-import { $isListNode, ListNode } from "@lexical/list";
+import { $isListNode, ListItemNode, ListNode } from "@lexical/list";
 import { $convertFromMarkdownString } from "@lexical/markdown";
 import { useLexicalComposerContext } from "@lexical/react/LexicalComposerContext";
 import {
@@ -558,7 +558,16 @@ export function $applyEdits(edits: Edit[], found: Source[], cite: boolean) {
   );
 
   for (const [block, suggestion] of flags) {
-    $setState(block, suggestionState, suggestion);
+    // Marked per item: adjacent lists merge, and a mark on the list node would
+    // be lost, or would take the other list's items with it.
+    const targets =
+      $isListNode(block) && block.getChildrenSize() > 0
+        ? block.getChildren()
+        : [block];
+
+    for (const target of targets) {
+      $setState(target, suggestionState, suggestion);
+    }
   }
 
   return new Set(flags.map(([, suggestion]) => suggestion.id)).size + inPlace;
@@ -664,6 +673,7 @@ export function useSuggestionMarks() {
       HeadingNode,
       QuoteNode,
       ListNode,
+      ListItemNode,
       CodeNode,
       TableNode,
       TextNode,

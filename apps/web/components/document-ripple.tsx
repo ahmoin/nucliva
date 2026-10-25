@@ -1021,7 +1021,7 @@ export function RippleLog({
           <span className="tabular-nums">{entries.length}</span>
         ) : null}
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-80">
+      <DropdownMenuContent align="end" className="w-96">
         <DropdownMenuGroup>
           <DropdownMenuLabel>Ripple log</DropdownMenuLabel>
           {entries.length === 0 ? (
@@ -1032,16 +1032,18 @@ export function RippleLog({
           ) : null}
           {entries.map((entry) => (
             <DropdownMenuItem
-              className="flex items-start gap-3"
+              className="flex items-start gap-3 normal-case tracking-normal"
               disabled={entry.reverted}
               key={entry.id}
               onClick={() => revertRipple(editor, store, entry.id)}
             >
               <div className="flex min-w-0 flex-1 flex-col gap-0.5">
-                <span className="truncate font-medium">{entry.label}</span>
-                <span className="truncate text-muted-foreground text-xs">
-                  {entry.from} to {entry.to}, {plural(entry.places.length, "place")}
-                  , {ago(entry.at)}
+                <span className="font-medium">{entry.label}</span>
+                <span className="break-words text-muted-foreground text-xs">
+                  {entry.from} to {entry.to}
+                </span>
+                <span className="text-muted-foreground text-xs">
+                  {plural(entry.places.length, "place")}, {ago(entry.at)}
                 </span>
               </div>
               <span className="shrink-0 font-semibold text-primary text-xs uppercase tracking-widest">

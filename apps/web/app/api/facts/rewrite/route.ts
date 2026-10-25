@@ -13,7 +13,7 @@ export async function POST(request: Request) {
     return Response.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const limited = limitGuest(session, "facts", 80);
+  const limited = limitGuest(session, "facts", 400);
 
   if (limited) {
     return limited;
