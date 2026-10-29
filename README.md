@@ -182,13 +182,13 @@ The run itself is a container that does one run and stops: [`agent.Dockerfile`](
 
 To set it up:
 
-1. Build and push the image from the root of the repository: `docker build -f agent.Dockerfile -t <registry>/nucliva-agent:latest .`, then `docker push` it to a registry Nebius can pull from.
+1. Build and push the image. The [Agent image](.github/workflows/agent-image.yml) workflow does this on every push to `main` and publishes `ghcr.io/<owner>/nucliva-agent:latest`; make the package public so Nebius can pull it. To build it yourself, run `docker build -f agent.Dockerfile -t <registry>/nucliva-agent:latest .` from the root of the repository, then `docker push` it.
 2. In Nebius AI Cloud, create a service account in a group that may create Serverless jobs, and an [authorized key](https://docs.nebius.com/iam/service-accounts/authorized-keys) for it.
 3. Set these on the web app:
 
 | Variable | What it is |
 | --- | --- |
-| `NEBIUS_PROJECT_ID` | the project the jobs run in |
+| `NEBIUS_PROJECT_ID` | the project the jobs run in, in a region with CPU quota (check Administration, then Limits) |
 | `NEBIUS_SERVICE_ACCOUNT_ID` | the service account |
 | `NEBIUS_AUTHORIZED_KEY_ID` | its authorized key |
 | `NEBIUS_PRIVATE_KEY` | the key's private PEM, with line breaks written as `\n` |
